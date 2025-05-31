@@ -3,587 +3,786 @@
 namespace app\controller\log;
 
 use app\controller\Base;
-use app\model\MoneyLog as models;
+use think\facade\Db;
+use think\facade\Request;
+use think\facade\Log;
+use think\Exception;
 
 class UserPayCash extends Base
 {
-    protected $model;
-
     /**
      * 会员提现管理控制器
      */
     public function initialize()
     {
-        $this->model = new models();
         parent::initialize();
     }
 
     /**
      * 会员提现列表
-     * 路由: POST /api/log/user-pay-cash/list
+     * 路由: POST /api/user-pay-cash/list
      */
     public function list()
     {
-        // 当前页
-        $page = $this->request->post('page', 1);
-        // 每页显示数量
-        $limit = $this->request->post('limit', 10);
-        // 查询搜索条件
-        $post = array_filter($this->request->post());
+        try {
+            // 获取请求参数
+            $page = (int)$this->request->post('page', 1);
+            $limit = (int)$this->request->post('limit', 10);
+            $username = $this->request->post('username', '');
+            $userId = (int)$this->request->post('userId', 0);
+            $phone = $this->request->post('phone', '');
+            $status = $this->request->post('status', '');
+            $payType = $this->request->post('payType', '');
+            $start = $this->request->post('start', '');
+            $end = $this->request->post('end', '');
+            $minAmount = (float)$this->request->post('minAmount', 0);
+            $maxAmount = (float)$this->request->post('maxAmount', 0);
+            $adminName = $this->request->post('adminName', '');
 
-        // 模拟数据 - 会员提现记录
-        $mockData = [
-            [
-                'id' => 1,
-                'createTime' => '2025-05-30 22:52:07',
-                'successTime' => null,
-                'money' => '100.00',
-                'moneyBalance' => '10001390.00',
-                'moneyFee' => '2.00',
-                'momeyActual' => '98.00',
-                'msg' => '用户申请提现',
-                'uId' => 7,
-                'userName' => 'zhangsan',
-                'uIp' => '98.159.43.112',
-                'uCity' => '',
-                'adminUid' => 0,
-                'adminName' => null,
-                'status' => 0, // 0-待审核
-                'payType' => 'usdt',
-                'uBankName' => 'USDT-TRC20',
-                'uBackCard' => 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
-                'uBackUserName' => 'zhangsan',
-                'marketUid' => 0,
-                'userType' => 2, // 会员
-                'isFictitious' => 0,
-                'userPhone' => '13800138000',
-                'userStatus' => 1
-            ],
-            [
-                'id' => 2,
-                'createTime' => '2025-05-30 22:52:28',
-                'successTime' => '2025-05-31 10:30:15',
-                'money' => '1000.00',
-                'moneyBalance' => '10001290.00',
-                'moneyFee' => '20.00',
-                'momeyActual' => '980.00',
-                'msg' => '审核通过',
-                'uId' => 7,
-                'userName' => 'zhangsan',
-                'uIp' => '98.159.43.112',
-                'uCity' => '',
-                'adminUid' => 1,
-                'adminName' => 'admin',
-                'status' => 1, // 已通过
-                'payType' => 'usdt',
-                'uBankName' => 'USDT-TRC20',
-                'uBackCard' => 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
-                'uBackUserName' => 'zhangsan',
-                'marketUid' => 0,
-                'userType' => 2,
-                'isFictitious' => 0,
-                'userPhone' => '13800138000',
-                'userStatus' => 1
-            ],
-            [
-                'id' => 3,
-                'createTime' => '2025-05-31 17:41:13',
-                'successTime' => null,
-                'money' => '5000.00',
-                'moneyBalance' => '518440.00',
-                'moneyFee' => '100.00',
-                'momeyActual' => '4900.00',
-                'msg' => '用户申请提现',
-                'uId' => 16,
-                'userName' => 'lisi',
-                'uIp' => '114.134.191.164',
-                'uCity' => '',
-                'adminUid' => 0,
-                'adminName' => null,
-                'status' => 0,
-                'payType' => 'huiwang',
-                'uBankName' => '汇旺',
-                'uBackCard' => '017919380',
-                'uBackUserName' => 'Ahua',
-                'marketUid' => 0,
-                'userType' => 2,
-                'isFictitious' => 0,
-                'userPhone' => '13900139000',
-                'userStatus' => 1
-            ],
-            [
-                'id' => 4,
-                'createTime' => '2025-05-31 17:41:56',
-                'successTime' => '2025-05-31 18:15:30',
-                'money' => '5000.00',
-                'moneyBalance' => '513440.00',
-                'moneyFee' => '100.00',
-                'momeyActual' => '4900.00',
-                'msg' => '拒绝提现：账户信息不符',
-                'uId' => 16,
-                'userName' => 'lisi',
-                'uIp' => '114.134.191.164',
-                'uCity' => '',
-                'adminUid' => 2,
-                'adminName' => 'admin2',
-                'status' => 2, // 已拒绝
-                'payType' => 'huiwang',
-                'uBankName' => '汇旺',
-                'uBackCard' => '017919380',
-                'uBackUserName' => 'Ahua',
-                'marketUid' => 0,
-                'userType' => 2,
-                'isFictitious' => 0,
-                'userPhone' => '13900139000',
-                'userStatus' => 1
-            ],
-            [
-                'id' => 5,
-                'createTime' => '2025-05-31 15:30:45',
-                'successTime' => null,
-                'money' => '2000.00',
-                'moneyBalance' => '8500.00',
-                'moneyFee' => '40.00',
-                'momeyActual' => '1960.00',
-                'msg' => '用户申请提现',
-                'uId' => 39,
-                'userName' => 'wangwu',
-                'uIp' => '192.168.1.100',
-                'uCity' => '北京',
-                'adminUid' => 0,
-                'adminName' => null,
-                'status' => 0,
-                'payType' => 'aba',
-                'uBankName' => 'ABA银行',
-                'uBackCard' => '001234567890',
-                'uBackUserName' => '王五',
-                'marketUid' => 0,
-                'userType' => 2,
-                'isFictitious' => 0,
-                'userPhone' => '13700137000',
-                'userStatus' => 1
-            ],
-            [
-                'id' => 6,
-                'createTime' => '2025-05-31 14:22:18',
-                'successTime' => '2025-05-31 16:45:20',
-                'money' => '800.00',
-                'moneyBalance' => '5200.00',
-                'moneyFee' => '16.00',
-                'momeyActual' => '784.00',
-                'msg' => '审核通过',
-                'uId' => 41,
-                'userName' => 'zhaoliu',
-                'uIp' => '203.45.67.89',
-                'uCity' => '上海',
-                'adminUid' => 1,
-                'adminName' => 'admin',
-                'status' => 1,
-                'payType' => 'usdt',
-                'uBankName' => 'USDT-ERC20',
-                'uBackCard' => '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
-                'uBackUserName' => '赵六',
-                'marketUid' => 0,
-                'userType' => 2,
-                'isFictitious' => 0,
-                'userPhone' => '13600136000',
-                'userStatus' => 1
-            ]
-        ];
+            // 构建查询条件
+            $query = Db::table('common_pay_cash as pc')
+                ->leftJoin('common_user as u', 'pc.u_id = u.id')
+                ->leftJoin('dianji_user_withdrawal_accounts as wa', 'u.id = wa.user_id AND wa.is_default = 1')
+                ->field([
+                    'pc.*',
+                    'u.user_name',
+                    'u.type as user_type',
+                    'u.is_fictitious',
+                    'u.phone as user_phone',
+                    'u.status as user_status',
+                    'wa.account_name',
+                    'wa.account_number',
+                    'wa.wallet_address',
+                    'wa.network_type'
+                ]);
 
-        // 模拟筛选逻辑
-        $filteredData = $this->filterMockData($mockData, $post);
-        
-        // 模拟分页
-        $total = count($filteredData);
-        $start = ($page - 1) * $limit;
-        $pageData = array_slice($filteredData, $start, $limit);
+            // 添加筛选条件
+            if (!empty($username)) {
+                $query->where('u.user_name', 'like', '%' . $username . '%');
+            }
 
-        // 模拟统计数据
-        $statistics = $this->getMockStatistics($filteredData);
+            if ($userId > 0) {
+                $query->where('pc.u_id', $userId);
+            }
 
-        $result = [
-            'data' => $pageData,
-            'total' => $total,
-            'current_page' => $page,
-            'per_page' => $limit,
-            'last_page' => ceil($total / $limit),
-            'statistics' => $statistics
-        ];
+            if (!empty($phone)) {
+                $query->where('u.phone', 'like', '%' . $phone . '%');
+            }
 
-        $this->success($result);
+            if ($status !== '') {
+                $query->where('pc.status', (int)$status);
+            }
+
+            if (!empty($payType)) {
+                $query->where('pc.pay_type', $payType);
+            }
+
+            if (!empty($start)) {
+                $query->where('pc.create_time', '>=', $start);
+            }
+
+            if (!empty($end)) {
+                $query->where('pc.create_time', '<=', $end);
+            }
+
+            if ($minAmount > 0) {
+                $query->where('pc.money', '>=', $minAmount);
+            }
+
+            if ($maxAmount > 0) {
+                $query->where('pc.money', '<=', $maxAmount);
+            }
+
+            if (!empty($adminName)) {
+                // 根据管理员用户名查询管理员ID
+                $adminUser = Db::table('common_admin')
+                    ->where('user_name', $adminName)
+                    ->field('id')
+                    ->find();
+                if ($adminUser) {
+                    $query->where('pc.admin_uid', $adminUser['id']);
+                }
+            }
+
+            // 获取总数
+            $total = $query->count();
+
+            // 分页查询
+            $offset = ($page - 1) * $limit;
+            $list = $query->order('pc.create_time', 'desc')
+                         ->limit($offset, $limit)
+                         ->select()
+                         ->toArray();
+
+            // 处理数据格式
+            foreach ($list as &$item) {
+                // 格式化时间
+                $item['createTime'] = $item['create_time'];
+                $item['successTime'] = $item['success_time'];
+                
+                // 格式化用户信息
+                $item['userName'] = $item['user_name'];
+                $item['uId'] = $item['u_id'];
+                $item['userPhone'] = $item['user_phone'];
+                $item['userType'] = $item['user_type'];
+                $item['userStatus'] = $item['user_status'];
+                $item['isFictitious'] = $item['is_fictitious'];
+                
+                // 格式化收款信息
+                $item['uBankName'] = $item['u_bank_name'];
+                $item['uBackCard'] = $item['u_back_card'];
+                $item['uBackUserName'] = $item['u_back_user_name'];
+                
+                // 获取管理员名称
+                if ($item['admin_uid'] > 0) {
+                    $admin = Db::table('common_admin')
+                        ->where('id', $item['admin_uid'])
+                        ->field('user_name, remarks')
+                        ->find();
+                    $item['adminName'] = $admin ? ($admin['remarks'] ?: $admin['user_name']) : '';
+                } else {
+                    $item['adminName'] = null;
+                }
+            }
+
+            // 获取统计数据
+            $statistics = $this->getStatistics($query->getOptions());
+
+            $result = [
+                'data' => $list,
+                'total' => $total,
+                'current_page' => $page,
+                'per_page' => $limit,
+                'last_page' => ceil($total / $limit),
+                'statistics' => $statistics
+            ];
+
+            $this->success($result);
+
+        } catch (Exception $e) {
+            Log::error('获取提现列表失败: ' . $e->getMessage());
+            $this->error('获取数据失败');
+        }
     }
 
     /**
      * 获取提现详情
-     * 路由: POST /api/log/user-pay-cash/detail
+     * 路由: POST /api/user-pay-cash/detail
      */
     public function detail()
     {
-        $id = $this->request->post('id');
-        
-        if (!$id) {
-            $this->error('缺少必要参数');
-        }
+        try {
+            $id = (int)$this->request->post('id');
+            
+            if (!$id) {
+                $this->error('缺少必要参数');
+            }
 
-        // 模拟详情数据
-        $mockDetail = [
-            'id' => $id,
-            'createTime' => '2025-05-30 22:52:07',
-            'successTime' => null,
-            'money' => '100.00',
-            'moneyBalance' => '10001390.00',
-            'moneyFee' => '2.00',
-            'momeyActual' => '98.00',
-            'msg' => '用户申请提现',
-            'uId' => 7,
-            'userName' => 'zhangsan',
-            'uIp' => '98.159.43.112',
-            'uCity' => '',
-            'adminUid' => 0,
-            'adminName' => null,
-            'status' => 0,
-            'payType' => 'usdt',
-            'uBankName' => 'USDT-TRC20',
-            'uBackCard' => 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
-            'uBackUserName' => 'zhangsan',
-            'marketUid' => 0,
-            'userType' => 2,
-            'isFictitious' => 0,
-            'userPhone' => '13800138000',
-            'userStatus' => 1,
+            $detail = Db::table('common_pay_cash as pc')
+                ->leftJoin('common_user as u', 'pc.u_id = u.id')
+                ->leftJoin('dianji_user_withdrawal_accounts as wa', 'u.id = wa.user_id AND wa.is_default = 1')
+                ->field([
+                    'pc.*',
+                    'u.user_name',
+                    'u.type as user_type',
+                    'u.is_fictitious',
+                    'u.phone as user_phone',
+                    'u.status as user_status',
+                    'u.create_time as register_time',
+                    'u.money_total_recharge',
+                    'u.money_total_withdraw',
+                    'wa.account_name',
+                    'wa.account_number',
+                    'wa.wallet_address',
+                    'wa.network_type',
+                    'wa.remark_name'
+                ])
+                ->where('pc.id', $id)
+                ->find();
+
+            if (!$detail) {
+                $this->error('记录不存在');
+            }
+
+            // 处理数据格式
+            $detail['createTime'] = $detail['create_time'];
+            $detail['successTime'] = $detail['success_time'];
+            $detail['userName'] = $detail['user_name'];
+            $detail['uId'] = $detail['u_id'];
+            $detail['userPhone'] = $detail['user_phone'];
+            $detail['userType'] = $detail['user_type'];
+            $detail['userStatus'] = $detail['user_status'];
+            $detail['isFictitious'] = $detail['is_fictitious'];
+            $detail['uBankName'] = $detail['u_bank_name'];
+            $detail['uBackCard'] = $detail['u_back_card'];
+            $detail['uBackUserName'] = $detail['u_back_user_name'];
+
+            // 获取管理员信息
+            if ($detail['admin_uid'] > 0) {
+                $admin = Db::table('common_admin')
+                    ->where('id', $detail['admin_uid'])
+                    ->field('user_name, remarks')
+                    ->find();
+                $detail['adminName'] = $admin ? ($admin['remarks'] ?: $admin['user_name']) : '';
+            } else {
+                $detail['adminName'] = null;
+            }
+
             // 扩展信息
-            'accountInfo' => [
-                'accountType' => 'usdt',
-                'walletAddress' => 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
-                'networkType' => 'TRC20',
-                'remarkName' => '主钱包'
-            ],
-            'userInfo' => [
-                'registerTime' => '2025-05-30 12:37:58',
-                'lastLoginTime' => '2025-05-31 18:30:00',
-                'totalRecharge' => '10000000.00',
-                'totalWithdraw' => '1100.00'
-            ]
-        ];
+            $detail['accountInfo'] = [
+                'accountType' => $detail['pay_type'],
+                'walletAddress' => $detail['wallet_address'],
+                'networkType' => $detail['network_type'],
+                'remarkName' => $detail['remark_name']
+            ];
 
-        $this->success($mockDetail);
+            $detail['userInfo'] = [
+                'registerTime' => $detail['register_time'],
+                'totalRecharge' => $detail['money_total_recharge'],
+                'totalWithdraw' => $detail['money_total_withdraw']
+            ];
+
+            $this->success($detail);
+
+        } catch (Exception $e) {
+            Log::error('获取提现详情失败: ' . $e->getMessage());
+            $this->error('获取详情失败');
+        }
     }
 
     /**
      * 审核提现申请
-     * 路由: POST /api/log/user-pay-cash/approve
+     * 路由: POST /api/user-pay-cash/approve
      */
     public function approve()
     {
-        $id = $this->request->post('id');
-        $action = $this->request->post('action'); // approve 或 reject
-        $remark = $this->request->post('remark', '');
-        $password = $this->request->post('password', '');
+        try {
+            $id = (int)$this->request->post('id');
+            $action = $this->request->post('action'); // approve 或 reject
+            $remark = $this->request->post('remark', '');
+            $password = $this->request->post('password', '');
 
-        if (!$id || !$action) {
-            $this->error('缺少必要参数');
-        }
+            if (!$id || !$action) {
+                $this->error('缺少必要参数');
+            }
 
-        // 模拟密码验证（可选）
-        if ($password && $password !== '123456') {
-            $this->error('操作密码错误');
-        }
+            // 验证操作密码（如果提供）
+            if (!empty($password) && !$this->verifyOperationPassword($password)) {
+                $this->error('操作密码错误');
+            }
 
-        // 模拟业务逻辑
-        if ($action === 'approve') {
-            // 模拟审核通过
-            $this->success([
-                'message' => '审核通过成功',
-                'id' => $id,
-                'status' => 1,
-                'successTime' => date('Y-m-d H:i:s'),
-                'adminUid' => 1,
-                'adminName' => 'admin',
-                'remark' => $remark
-            ]);
-        } elseif ($action === 'reject') {
-            // 模拟审核拒绝
-            $this->success([
-                'message' => '已拒绝该提现申请',
-                'id' => $id,
-                'status' => 2,
-                'successTime' => date('Y-m-d H:i:s'),
-                'adminUid' => 1,
-                'adminName' => 'admin',
-                'remark' => $remark
-            ]);
-        } else {
-            $this->error('无效的操作类型');
+            // 获取提现记录
+            $withdrawal = Db::table('common_pay_cash')
+                ->where('id', $id)
+                ->find();
+
+            if (!$withdrawal) {
+                $this->error('提现记录不存在');
+            }
+
+            if ($withdrawal['status'] != 0) {
+                $this->error('该记录已处理，无法重复操作');
+            }
+
+            // 开启事务
+            Db::startTrans();
+
+            try {
+                $adminUid = $this->getAdminId(); // 获取当前管理员ID
+                $updateData = [
+                    'success_time' => date('Y-m-d H:i:s'),
+                    'admin_uid' => $adminUid,
+                    'msg' => $remark ?: ($action === 'approve' ? '审核通过' : '审核拒绝')
+                ];
+
+                if ($action === 'approve') {
+                    // 审核通过
+                    $updateData['status'] = 1;
+                    
+                    // 更新提现记录
+                    Db::table('common_pay_cash')
+                        ->where('id', $id)
+                        ->update($updateData);
+
+                    // 记录资金流水 - 提现完成
+                    $this->addMoneyLog(
+                        $withdrawal['u_id'],
+                        2, // 支出
+                        201, // 提现
+                        $withdrawal['money_balance'],
+                        $withdrawal['money_balance'], // 余额已在申请时扣除
+                        0, // 此时不再变动余额
+                        $id,
+                        "提现审核通过 - 提现ID:{$id} 金额:{$withdrawal['money']}$ 实际到账:{$withdrawal['momey_actual']}$"
+                    );
+
+                    $message = '审核通过成功';
+
+                } elseif ($action === 'reject') {
+                    // 审核拒绝，需要返还金额到用户账户
+                    $updateData['status'] = 2;
+                    
+                    // 获取用户当前余额
+                    $user = Db::table('common_user')
+                        ->where('id', $withdrawal['u_id'])
+                        ->field('money_balance')
+                        ->find();
+
+                    if (!$user) {
+                        throw new Exception('用户不存在');
+                    }
+
+                    $oldBalance = $user['money_balance'];
+                    $newBalance = bcadd($oldBalance, $withdrawal['money'], 2);
+
+                    // 更新用户余额
+                    Db::table('common_user')
+                        ->where('id', $withdrawal['u_id'])
+                        ->update(['money_balance' => $newBalance]);
+
+                    // 更新提现记录
+                    Db::table('common_pay_cash')
+                        ->where('id', $id)
+                        ->update($updateData);
+
+                    // 记录资金流水 - 提现退款
+                    $this->addMoneyLog(
+                        $withdrawal['u_id'],
+                        1, // 收入
+                        401, // 提现退款
+                        $oldBalance,
+                        $newBalance,
+                        $withdrawal['money'],
+                        $id,
+                        "提现审核拒绝退款 - 提现ID:{$id} 退款金额:{$withdrawal['money']}$ 原因:{$remark}"
+                    );
+
+                    $message = '已拒绝该提现申请并退还金额';
+                } else {
+                    throw new Exception('无效的操作类型');
+                }
+
+                // 提交事务
+                Db::commit();
+
+                $this->success([
+                    'message' => $message,
+                    'id' => $id,
+                    'status' => $updateData['status'],
+                    'successTime' => $updateData['success_time'],
+                    'adminUid' => $adminUid,
+                    'remark' => $updateData['msg']
+                ]);
+
+            } catch (Exception $e) {
+                Db::rollback();
+                throw $e;
+            }
+
+        } catch (Exception $e) {
+            Log::error('审核提现申请失败: ' . $e->getMessage());
+            $this->error($e->getMessage());
         }
     }
 
     /**
      * 批量审核提现申请
-     * 路由: POST /api/log/user-pay-cash/batch-approve
+     * 路由: POST /api/user-pay-cash/batch-approve
      */
     public function batchApprove()
     {
-        $ids = $this->request->post('ids', []);
-        $action = $this->request->post('action'); // approve 或 reject
-        $remark = $this->request->post('remark', '');
-        $password = $this->request->post('password', '');
+        try {
+            $ids = $this->request->post('ids', []);
+            $action = $this->request->post('action'); // approve 或 reject
+            $remark = $this->request->post('remark', '');
+            $password = $this->request->post('password', '');
 
-        if (empty($ids) || !$action) {
-            $this->error('缺少必要参数');
+            if (empty($ids) || !$action) {
+                $this->error('缺少必要参数');
+            }
+
+            // 验证操作密码
+            if (!empty($password) && !$this->verifyOperationPassword($password)) {
+                $this->error('操作密码错误');
+            }
+
+            // 获取待处理的提现记录
+            $withdrawals = Db::table('common_pay_cash')
+                ->where('id', 'in', $ids)
+                ->where('status', 0)
+                ->select()
+                ->toArray();
+
+            if (empty($withdrawals)) {
+                $this->error('没有找到待处理的提现记录');
+            }
+
+            $successCount = 0;
+            $failedCount = 0;
+            $errors = [];
+
+            // 开启事务
+            Db::startTrans();
+
+            try {
+                foreach ($withdrawals as $withdrawal) {
+                    try {
+                        $this->processSingleWithdrawal($withdrawal, $action, $remark);
+                        $successCount++;
+                    } catch (Exception $e) {
+                        $failedCount++;
+                        $errors[] = "ID {$withdrawal['id']}: " . $e->getMessage();
+                    }
+                }
+
+                if ($failedCount > 0) {
+                    Db::rollback();
+                    $this->error('批量处理失败: ' . implode('; ', $errors));
+                } else {
+                    Db::commit();
+                }
+
+                $statusText = $action === 'approve' ? '通过' : '拒绝';
+                $this->success([
+                    'message' => "已批量{$statusText} {$successCount} 条申请",
+                    'successCount' => $successCount,
+                    'processedIds' => array_column($withdrawals, 'id'),
+                    'action' => $action,
+                    'remark' => $remark
+                ]);
+
+            } catch (Exception $e) {
+                Db::rollback();
+                throw $e;
+            }
+
+        } catch (Exception $e) {
+            Log::error('批量审核提现申请失败: ' . $e->getMessage());
+            $this->error($e->getMessage());
         }
-
-        // 模拟密码验证
-        if ($password && $password !== '123456') {
-            $this->error('操作密码错误');
-        }
-
-        $successCount = count($ids);
-        $statusText = $action === 'approve' ? '通过' : '拒绝';
-
-        $this->success([
-            'message' => "已批量{$statusText} {$successCount} 条申请",
-            'successCount' => $successCount,
-            'processedIds' => $ids,
-            'action' => $action,
-            'remark' => $remark
-        ]);
     }
 
     /**
      * 获取提现统计
-     * 路由: POST /api/log/user-pay-cash/statistics
+     * 路由: POST /api/user-pay-cash/statistics
      */
     public function statistics()
     {
-        $post = array_filter($this->request->post());
-
-        // 模拟统计数据
-        $mockStatistics = [
-            'totalAmount' => '18900.00',
-            'totalFee' => '378.00',
-            'totalActual' => '18522.00',
-            'pendingCount' => 3,
-            'approvedCount' => 2,
-            'rejectedCount' => 1,
-            'todayAmount' => '7100.00',
-            'monthAmount' => '18900.00',
-            'pendingAmount' => '7100.00',
-            'approvedAmount' => '6800.00',
-            'rejectedAmount' => '5000.00'
-        ];
-
-        $this->success($mockStatistics);
+        try {
+            $post = $this->request->post();
+            $statistics = $this->getStatistics($post);
+            $this->success($statistics);
+        } catch (Exception $e) {
+            Log::error('获取提现统计失败: ' . $e->getMessage());
+            $this->error('获取统计数据失败');
+        }
     }
 
     /**
      * 导出提现记录
-     * 路由: POST /api/log/user-pay-cash/export
+     * 路由: POST /api/user-pay-cash/export
      */
     public function export()
     {
-        $post = array_filter($this->request->post());
+        try {
+            $post = $this->request->post();
 
-        // 模拟导出逻辑
-        $exportData = [
-            'filename' => '会员提现记录_' . date('YmdHis') . '.xlsx',
-            'downloadUrl' => '/download/withdrawal_' . date('YmdHis') . '.xlsx',
-            'totalRecords' => 6,
-            'exportTime' => date('Y-m-d H:i:s')
-        ];
+            // 这里可以实现Excel导出逻辑
+            // 暂时返回模拟数据
+            $exportData = [
+                'filename' => '会员提现记录_' . date('YmdHis') . '.xlsx',
+                'downloadUrl' => '/download/withdrawal_' . date('YmdHis') . '.xlsx',
+                'totalRecords' => 0, // 实际导出记录数
+                'exportTime' => date('Y-m-d H:i:s')
+            ];
 
-        $this->success($exportData);
+            $this->success($exportData);
+        } catch (Exception $e) {
+            Log::error('导出提现记录失败: ' . $e->getMessage());
+            $this->error('导出失败');
+        }
     }
 
     /**
      * 获取用户提现账户
-     * 路由: POST /api/log/user-pay-cash/user-accounts
+     * 路由: POST /api/user-pay-cash/user-accounts
      */
     public function userAccounts()
     {
-        $userId = $this->request->post('userId');
+        try {
+            $userId = (int)$this->request->post('userId');
 
-        if (!$userId) {
-            $this->error('缺少用户ID参数');
+            if (!$userId) {
+                $this->error('缺少用户ID参数');
+            }
+
+            $accounts = Db::table('dianji_user_withdrawal_accounts')
+                ->where('user_id', $userId)
+                ->where('status', 1)
+                ->order('is_default desc, id desc')
+                ->select()
+                ->toArray();
+
+            $this->success($accounts);
+        } catch (Exception $e) {
+            Log::error('获取用户提现账户失败: ' . $e->getMessage());
+            $this->error('获取账户信息失败');
         }
-
-        // 模拟用户提现账户数据
-        $mockAccounts = [
-            [
-                'id' => 1,
-                'userId' => $userId,
-                'accountType' => 'usdt',
-                'accountName' => null,
-                'walletAddress' => 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
-                'networkType' => 'TRC20',
-                'remarkName' => '主钱包',
-                'isDefault' => true,
-                'status' => 1
-            ],
-            [
-                'id' => 2,
-                'userId' => $userId,
-                'accountType' => 'aba',
-                'accountName' => '张三',
-                'accountNumber' => '001234567890',
-                'phoneNumber' => '85512345678',
-                'bankBranch' => '金边分行',
-                'isDefault' => false,
-                'status' => 1
-            ],
-            [
-                'id' => 3,
-                'userId' => $userId,
-                'accountType' => 'huiwang',
-                'accountName' => '张三',
-                'accountNumber' => '85512345678',
-                'idNumber' => 'P123456789',
-                'isDefault' => false,
-                'status' => 1
-            ]
-        ];
-
-        $this->success($mockAccounts);
     }
 
     /**
      * 获取支付方式配置
-     * 路由: POST /api/log/user-pay-cash/payment-methods
+     * 路由: POST /api/user-pay-cash/payment-methods
      */
     public function paymentMethods()
     {
-        // 模拟支付方式配置
-        $mockMethods = [
-            [
-                'type' => 'usdt',
-                'name' => 'USDT',
-                'icon' => '/images/usdt.png',
-                'enabled' => true,
-                'feeRate' => 2.0,
-                'minAmount' => 10,
-                'maxAmount' => 50000,
-                'networks' => ['TRC20', 'ERC20']
-            ],
-            [
-                'type' => 'aba',
-                'name' => 'ABA银行',
-                'icon' => '/images/aba.png',
-                'enabled' => true,
-                'feeRate' => 1.5,
-                'minAmount' => 20,
-                'maxAmount' => 100000
-            ],
-            [
-                'type' => 'huiwang',
-                'name' => '汇旺',
-                'icon' => '/images/huiwang.png',
-                'enabled' => true,
-                'feeRate' => 2.5,
-                'minAmount' => 50,
-                'maxAmount' => 20000
-            ]
-        ];
+        try {
+            // 从系统配置或数据库获取支付方式配置
+            $methods = [
+                [
+                    'type' => 'usdt',
+                    'name' => 'USDT',
+                    'icon' => '/images/usdt.png',
+                    'enabled' => true,
+                    'feeRate' => 2.0,
+                    'minAmount' => 10,
+                    'maxAmount' => 50000,
+                    'networks' => ['TRC20', 'ERC20']
+                ],
+                [
+                    'type' => 'aba',
+                    'name' => 'ABA银行',
+                    'icon' => '/images/aba.png',
+                    'enabled' => true,
+                    'feeRate' => 1.5,
+                    'minAmount' => 20,
+                    'maxAmount' => 100000
+                ],
+                [
+                    'type' => 'huiwang',
+                    'name' => '汇旺',
+                    'icon' => '/images/huiwang.png',
+                    'enabled' => true,
+                    'feeRate' => 2.5,
+                    'minAmount' => 50,
+                    'maxAmount' => 20000
+                ]
+            ];
 
-        $this->success($mockMethods);
+            $this->success($methods);
+        } catch (Exception $e) {
+            Log::error('获取支付方式配置失败: ' . $e->getMessage());
+            $this->error('获取配置失败');
+        }
     }
 
     /**
      * 获取管理员列表
-     * 路由: POST /api/log/user-pay-cash/admin-users
+     * 路由: POST /api/user-pay-cash/admin-users
      */
     public function adminUsers()
     {
-        // 模拟管理员列表
-        $mockAdmins = [
-            [
-                'id' => 1,
-                'username' => 'admin',
-                'nickname' => '超级管理员',
-                'role' => 'super_admin'
-            ],
-            [
-                'id' => 2,
-                'username' => 'admin2',
-                'nickname' => '财务管理员',
-                'role' => 'finance_admin'
-            ],
-            [
-                'id' => 3,
-                'username' => 'auditor',
-                'nickname' => '审核员',
-                'role' => 'auditor'
-            ]
-        ];
+        try {
+            $admins = Db::table('common_admin')
+                ->field('id, user_name as username, remarks as nickname, role')
+                ->order('id desc')
+                ->select()
+                ->toArray();
 
-        $this->success($mockAdmins);
+            // 处理管理员数据格式
+            foreach ($admins as &$admin) {
+                // 如果remarks为空或为'0'，则使用user_name作为nickname
+                if (empty($admin['nickname']) || $admin['nickname'] === '0') {
+                    $admin['nickname'] = $admin['username'];
+                }
+            }
+
+            $this->success($admins);
+        } catch (Exception $e) {
+            Log::error('获取管理员列表失败: ' . $e->getMessage());
+            $this->error('获取管理员列表失败');
+        }
     }
 
     /**
-     * 模拟数据筛选
+     * 获取统计数据
      */
-    private function filterMockData($data, $filters)
+    private function getStatistics($conditions = [])
     {
-        return array_filter($data, function($item) use ($filters) {
-            // 用户名筛选
-            if (isset($filters['username']) && !empty($filters['username'])) {
-                if (strpos($item['userName'], $filters['username']) === false) {
-                    return false;
-                }
-            }
+        try {
+            $query = Db::table('common_pay_cash as pc')
+                ->leftJoin('common_user as u', 'pc.u_id = u.id');
 
-            // 用户ID筛选
-            if (isset($filters['userId']) && !empty($filters['userId'])) {
-                if ($item['uId'] != $filters['userId']) {
-                    return false;
-                }
-            }
+            // 应用筛选条件
+            $this->applyConditions($query, $conditions);
 
-            // 状态筛选
-            if (isset($filters['status']) && $filters['status'] !== '') {
-                if ($item['status'] != $filters['status']) {
-                    return false;
-                }
-            }
+            $stats = $query->field([
+                'COUNT(*) as total_count',
+                'SUM(CASE WHEN pc.status = 0 THEN 1 ELSE 0 END) as pending_count',
+                'SUM(CASE WHEN pc.status = 1 THEN 1 ELSE 0 END) as approved_count',
+                'SUM(CASE WHEN pc.status = 2 THEN 1 ELSE 0 END) as rejected_count',
+                'SUM(pc.money) as total_amount',
+                'SUM(pc.money_fee) as total_fee',
+                'SUM(pc.momey_actual) as total_actual'
+            ])->find();
 
-            // 支付方式筛选
-            if (isset($filters['payType']) && !empty($filters['payType'])) {
-                if ($item['payType'] != $filters['payType']) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
+            return [
+                'totalAmount' => number_format($stats['total_amount'] ?: 0, 2),
+                'totalFee' => number_format($stats['total_fee'] ?: 0, 2),
+                'totalActual' => number_format($stats['total_actual'] ?: 0, 2),
+                'pendingCount' => (int)$stats['pending_count'],
+                'approvedCount' => (int)$stats['approved_count'],
+                'rejectedCount' => (int)$stats['rejected_count']
+            ];
+        } catch (Exception $e) {
+            Log::error('获取统计数据失败: ' . $e->getMessage());
+            return [
+                'totalAmount' => '0.00',
+                'totalFee' => '0.00',
+                'totalActual' => '0.00',
+                'pendingCount' => 0,
+                'approvedCount' => 0,
+                'rejectedCount' => 0
+            ];
+        }
     }
 
     /**
-     * 获取模拟统计数据
+     * 应用查询条件
      */
-    private function getMockStatistics($data)
+    private function applyConditions($query, $conditions)
     {
-        $totalAmount = array_sum(array_column($data, 'money'));
-        $totalFee = array_sum(array_column($data, 'moneyFee'));
-        $totalActual = array_sum(array_column($data, 'momeyActual'));
+        if (isset($conditions['status']) && $conditions['status'] !== '') {
+            $query->where('pc.status', (int)$conditions['status']);
+        }
 
-        $pendingCount = count(array_filter($data, function($item) {
-            return $item['status'] == 0;
-        }));
+        if (isset($conditions['start']) && !empty($conditions['start'])) {
+            $query->where('pc.create_time', '>=', $conditions['start']);
+        }
 
-        $approvedCount = count(array_filter($data, function($item) {
-            return $item['status'] == 1;
-        }));
+        if (isset($conditions['end']) && !empty($conditions['end'])) {
+            $query->where('pc.create_time', '<=', $conditions['end']);
+        }
+    }
 
-        $rejectedCount = count(array_filter($data, function($item) {
-            return $item['status'] == 2;
-        }));
-
-        return [
-            'totalAmount' => number_format($totalAmount, 2),
-            'totalFee' => number_format($totalFee, 2),
-            'totalActual' => number_format($totalActual, 2),
-            'pendingCount' => $pendingCount,
-            'approvedCount' => $approvedCount,
-            'rejectedCount' => $rejectedCount
+    /**
+     * 处理单个提现申请
+     */
+    private function processSingleWithdrawal($withdrawal, $action, $remark)
+    {
+        $adminUid = $this->getAdminId();
+        $updateData = [
+            'success_time' => date('Y-m-d H:i:s'),
+            'admin_uid' => $adminUid,
+            'msg' => $remark ?: ($action === 'approve' ? '批量审核通过' : '批量审核拒绝')
         ];
+
+        if ($action === 'approve') {
+            $updateData['status'] = 1;
+            
+            // 更新提现记录
+            Db::table('common_pay_cash')
+                ->where('id', $withdrawal['id'])
+                ->update($updateData);
+
+            // 记录资金流水
+            $this->addMoneyLog(
+                $withdrawal['u_id'],
+                2,
+                201,
+                $withdrawal['money_balance'],
+                $withdrawal['money_balance'],
+                0,
+                $withdrawal['id'],
+                "批量提现审核通过 - 提现ID:{$withdrawal['id']}"
+            );
+
+        } elseif ($action === 'reject') {
+            $updateData['status'] = 2;
+            
+            // 获取用户当前余额并返还
+            $user = Db::table('common_user')
+                ->where('id', $withdrawal['u_id'])
+                ->field('money_balance')
+                ->find();
+
+            if (!$user) {
+                throw new Exception("用户不存在 (ID: {$withdrawal['u_id']})");
+            }
+
+            $oldBalance = $user['money_balance'];
+            $newBalance = bcadd($oldBalance, $withdrawal['money'], 2);
+
+            // 更新用户余额
+            Db::table('common_user')
+                ->where('id', $withdrawal['u_id'])
+                ->update(['money_balance' => $newBalance]);
+
+            // 更新提现记录
+            Db::table('common_pay_cash')
+                ->where('id', $withdrawal['id'])
+                ->update($updateData);
+
+            // 记录资金流水
+            $this->addMoneyLog(
+                $withdrawal['u_id'],
+                1,
+                401,
+                $oldBalance,
+                $newBalance,
+                $withdrawal['money'],
+                $withdrawal['id'],
+                "批量提现审核拒绝退款 - 提现ID:{$withdrawal['id']}"
+            );
+        }
+    }
+
+    /**
+     * 添加资金流水记录
+     */
+    private function addMoneyLog($uid, $type, $status, $moneyBefore, $moneyEnd, $money, $sourceId, $mark)
+    {
+        Db::table('common_pay_money_log')->insert([
+            'create_time' => date('Y-m-d H:i:s'),
+            'type' => $type,
+            'status' => $status,
+            'money_before' => $moneyBefore,
+            'money_end' => $moneyEnd,
+            'money' => $money,
+            'uid' => $uid,
+            'source_id' => $sourceId,
+            'market_uid' => 0,
+            'mark' => $mark
+        ]);
+    }
+
+    /**
+     * 验证操作密码
+     */
+    private function verifyOperationPassword($password)
+    {
+        // 这里实现密码验证逻辑
+        // 可以从配置文件或数据库获取正确的密码
+        $correctPassword = '123456'; // 示例密码
+        return $password === $correctPassword;
+    }
+
+    /**
+     * 获取当前管理员ID
+     */
+    private function getAdminId()
+    {
+        // 这里需要从session或token中获取当前登录的管理员ID
+        // 可以从Base控制器中获取，或者从JWT token中解析
+        
+        // 示例：从session中获取
+        // $adminId = session('admin_id');
+        // if (!$adminId) {
+        //     throw new Exception('未登录或登录已过期');
+        // }
+        // return $adminId;
+        
+        // 暂时返回默认值（实际项目中需要修改）
+        return 1; // 示例管理员ID
     }
 }
