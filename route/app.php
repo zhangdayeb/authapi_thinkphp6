@@ -273,7 +273,59 @@ POST /api/user-pay-cash/payment-methods   -> UserPayCash::paymentMethods()
 POST /api/user-pay-cash/admin-users       -> UserPayCash::adminUsers()
 */
 
+// ====================================================================
+// 公司收款账户管理模块
+// ====================================================================
 
+// 收款账户列表
+Route::rule('zhanghu/list$', '/log.ZhangHu/list');
+
+// 收款账户详情
+Route::rule('zhanghu/detail$', '/log.ZhangHu/detail');
+
+// 添加收款账户
+Route::rule('zhanghu/add$', '/log.ZhangHu/add');
+
+// 编辑收款账户
+Route::rule('zhanghu/edit$', '/log.ZhangHu/edit');
+
+// 删除收款账户
+Route::rule('zhanghu/del$', '/log.ZhangHu/del');
+
+// 切换账户状态
+Route::rule('zhanghu/status$', '/log.ZhangHu/status');
+
+// 批量操作状态
+Route::rule('zhanghu/batch_status$', '/log.ZhangHu/batchStatus');
+
+// 获取统计数据
+Route::rule('zhanghu/statistics$', '/log.ZhangHu/statistics');
+
+// 导出账户列表
+Route::rule('zhanghu/export$', '/log.ZhangHu/export');
+
+// 获取支付方式配置
+Route::rule('zhanghu/payment_methods$', '/log.ZhangHu/paymentMethods');
+
+// 更新使用统计
+Route::rule('zhanghu/update_usage$', '/log.ZhangHu/updateUsage');
+
+/* 
+使用示例：
+前端请求地址对应关系：
+
+POST /api/zhanghu/list              -> ZhangHu::list()
+POST /api/zhanghu/detail            -> ZhangHu::detail()
+POST /api/zhanghu/add               -> ZhangHu::add()
+POST /api/zhanghu/edit              -> ZhangHu::edit()
+POST /api/zhanghu/del               -> ZhangHu::del()
+POST /api/zhanghu/status            -> ZhangHu::status()
+POST /api/zhanghu/batch_status      -> ZhangHu::batchStatus()
+POST /api/zhanghu/statistics        -> ZhangHu::statistics()
+POST /api/zhanghu/export            -> ZhangHu::export()
+POST /api/zhanghu/payment_methods   -> ZhangHu::paymentMethods()
+POST /api/zhanghu/update_usage      -> ZhangHu::updateUsage()
+*/
 // ====================================================================
 // 充值管理模块
 // ====================================================================

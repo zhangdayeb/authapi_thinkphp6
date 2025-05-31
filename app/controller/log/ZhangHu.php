@@ -8,10 +8,10 @@ use think\facade\Request;
 use think\facade\Log;
 use think\Exception;
 
-class UserPayCash extends Base
+class ZhangHu extends Base
 {
     /**
-     * 会员提现管理控制器
+     * 公司收款账户管理控制器
      */
     public function initialize()
     {
@@ -19,40 +19,50 @@ class UserPayCash extends Base
     }
 
     /**
-     * 会员提现列表（简化调试版）
-     * 路由: POST /api/user-pay-cash/list
+     * 获取收款账户列表
+     * 路由: POST /api/zhanghu/list
      */
     public function list()
     {
         try {
-            // 获取基本参数
             $page = (int)$this->request->post('page', 1);
             $limit = (int)$this->request->post('limit', 10);
+            $methodCode = $this->request->post('methodCode', '');
+            $isActive = $this->request->post('isActive', '');
+            $accountName = $this->request->post('accountName', '');
+            $start = $this->request->post('start', '');
+            $end = $this->request->post('end', '');
 
-            // 简单查询，先不使用复杂的JOIN
-            $total = Db::name('common_pay_cash')->count();
-            
+            $query = Db::name('dianji_deposit_accounts');
+
+            // 应用筛选条件
+            if (!empty($methodCode)) {
+                $query->where('method_code', $methodCode);
+            }
+            if ($isActive !== '') {
+                $query->where('is_active', (int)$isActive);
+            }
+            if (!empty($accountName)) {
+                $query->where('account_name', 'like', '%' . $accountName . '%');
+            }
+            if (!empty($start)) {
+                $query->where('created_at', '>=', $start);
+            }
+            if (!empty($end)) {
+                $query->where('created_at', '<=', $end);
+            }
+
+            $total = $query->count();
             $offset = ($page - 1) * $limit;
-            $list = Db::name('common_pay_cash')
-                ->order('create_time', 'desc')
+            
+            $list = $query->order('created_at', 'desc')
                 ->limit($offset, $limit)
                 ->select()
                 ->toArray();
 
-            // 简化数据格式处理
+            // 格式化数据
             foreach ($list as &$item) {
-                $item['createTime'] = $item['create_time'];
-                $item['successTime'] = $item['success_time'];
-                $item['userName'] = '用户' . $item['u_id']; // 临时简化
-                $item['uId'] = $item['u_id'];
-                $item['userPhone'] = '';
-                $item['userType'] = 2;
-                $item['userStatus'] = 1;
-                $item['isFictitious'] = 0;
-                $item['uBankName'] = $item['u_bank_name'];
-                $item['uBackCard'] = $item['u_back_card'];
-                $item['uBackUserName'] = $item['u_back_user_name'];
-                $item['adminName'] = null;
+                $item = $this->formatAccountData($item);
             }
 
             $result = [
@@ -60,28 +70,20 @@ class UserPayCash extends Base
                 'total' => $total,
                 'current_page' => $page,
                 'per_page' => $limit,
-                'last_page' => ceil($total / $limit),
-                'statistics' => [
-                    'totalAmount' => '0.00',
-                    'totalFee' => '0.00',
-                    'totalActual' => '0.00',
-                    'pendingCount' => 0,
-                    'approvedCount' => 0,
-                    'rejectedCount' => 0
-                ]
+                'last_page' => ceil($total / $limit)
             ];
 
             return json(['code' => 1, 'message' => '获取成功', 'data' => $result]);
 
         } catch (Exception $e) {
-            Log::error('获取提现列表失败: ' . $e->getMessage());
+            Log::error('获取账户列表失败: ' . $e->getMessage());
             return json(['code' => 0, 'message' => '获取数据失败: ' . $e->getMessage()]);
         }
     }
 
     /**
-     * 获取提现详情
-     * 路由: POST /api/user-pay-cash/detail
+     * 获取账户详情
+     * 路由: POST /api/zhanghu/detail
      */
     public function detail()
     {
@@ -92,404 +94,317 @@ class UserPayCash extends Base
                 return json(['code' => 0, 'message' => '缺少必要参数']);
             }
 
-            $detail = Db::name('common_pay_cash as pc')
-                ->leftJoin('common_user as u', 'pc.u_id = u.id')
-                ->leftJoin('dianji_user_withdrawal_accounts as wa', 'u.id = wa.user_id AND wa.is_default = 1')
-                ->field([
-                    'pc.*',
-                    'u.user_name',
-                    'u.type as user_type',
-                    'u.is_fictitious',
-                    'u.phone as user_phone',
-                    'u.status as user_status',
-                    'u.create_time as register_time',
-                    'u.money_total_recharge',
-                    'u.money_total_withdraw',
-                    'wa.account_name',
-                    'wa.account_number',
-                    'wa.wallet_address',
-                    'wa.network_type',
-                    'wa.remark_name'
-                ])
-                ->where('pc.id', $id)
+            $account = Db::name('dianji_deposit_accounts')
+                ->where('id', $id)
                 ->find();
 
-            if (!$detail) {
-                return json(['code' => 0, 'message' => '记录不存在']);
+            if (!$account) {
+                return json(['code' => 0, 'message' => '账户不存在']);
             }
 
-            // 处理数据格式
-            $detail['createTime'] = $detail['create_time'];
-            $detail['successTime'] = $detail['success_time'];
-            $detail['userName'] = $detail['user_name'];
-            $detail['uId'] = $detail['u_id'];
-            $detail['userPhone'] = $detail['user_phone'];
-            $detail['userType'] = $detail['user_type'];
-            $detail['userStatus'] = $detail['user_status'];
-            $detail['isFictitious'] = $detail['is_fictitious'];
-            $detail['uBankName'] = $detail['u_bank_name'];
-            $detail['uBackCard'] = $detail['u_back_card'];
-            $detail['uBackUserName'] = $detail['u_back_user_name'];
+            $account = $this->formatAccountData($account);
 
-            // 获取管理员信息
-            if ($detail['admin_uid'] > 0) {
-                $admin = Db::name('common_admin')
-                    ->where('id', $detail['admin_uid'])
-                    ->field('user_name, remarks')
-                    ->find();
-                $detail['adminName'] = $admin ? ($admin['remarks'] ?: $admin['user_name']) : '';
-            } else {
-                $detail['adminName'] = null;
-            }
-
-            // 扩展信息
-            $detail['accountInfo'] = [
-                'accountType' => $detail['pay_type'],
-                'walletAddress' => $detail['wallet_address'],
-                'networkType' => $detail['network_type'],
-                'remarkName' => $detail['remark_name']
-            ];
-
-            $detail['userInfo'] = [
-                'registerTime' => $detail['register_time'],
-                'totalRecharge' => $detail['money_total_recharge'],
-                'totalWithdraw' => $detail['money_total_withdraw']
-            ];
-
-            return json(['code' => 1, 'message' => '获取成功', 'data' => $detail]);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $account]);
 
         } catch (Exception $e) {
-            Log::error('获取提现详情失败: ' . $e->getMessage());
+            Log::error('获取账户详情失败: ' . $e->getMessage());
             return json(['code' => 0, 'message' => '获取详情失败']);
         }
     }
 
     /**
-     * 审核提现申请
-     * 路由: POST /api/user-pay-cash/approve
+     * 添加账户
+     * 路由: POST /api/zhanghu/add
      */
-    public function approve()
+    public function add()
+    {
+        try {
+            $data = $this->validateAccountData();
+            
+            if (isset($data['error'])) {
+                return json(['code' => 0, 'message' => $data['error']]);
+            }
+
+            // 检查账户是否已存在
+            $exists = $this->checkAccountExists($data);
+            if ($exists) {
+                return json(['code' => 0, 'message' => '账户已存在']);
+            }
+
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $data['updated_at'] = date('Y-m-d H:i:s');
+
+            $id = Db::name('dianji_deposit_accounts')->insertGetId($data);
+
+            if ($id) {
+                return json(['code' => 1, 'message' => '添加成功', 'data' => ['id' => $id]]);
+            } else {
+                return json(['code' => 0, 'message' => '添加失败']);
+            }
+
+        } catch (Exception $e) {
+            Log::error('添加账户失败: ' . $e->getMessage());
+            return json(['code' => 0, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 编辑账户
+     * 路由: POST /api/zhanghu/edit
+     */
+    public function edit()
     {
         try {
             $id = (int)$this->request->post('id');
-            $action = $this->request->post('action'); // approve 或 reject
-            $remark = $this->request->post('remark', '');
-            $password = $this->request->post('password', '');
-
-            if (!$id || !$action) {
-                return json(['code' => 0, 'message' => '缺少必要参数']);
+            if (!$id) {
+                return json(['code' => 0, 'message' => '缺少账户ID']);
             }
 
-            // 验证操作密码（如果提供）
-            if (!empty($password) && !$this->verifyOperationPassword($password)) {
-                return json(['code' => 0, 'message' => '操作密码错误']);
+            $data = $this->validateAccountData(false);
+            
+            if (isset($data['error'])) {
+                return json(['code' => 0, 'message' => $data['error']]);
             }
 
-            // 获取提现记录
-            $withdrawal = Db::name('common_pay_cash')
+            // 检查账户是否存在
+            $account = Db::name('dianji_deposit_accounts')->where('id', $id)->find();
+            if (!$account) {
+                return json(['code' => 0, 'message' => '账户不存在']);
+            }
+
+            // 检查是否与其他账户重复
+            $exists = $this->checkAccountExists($data, $id);
+            if ($exists) {
+                return json(['code' => 0, 'message' => '账户信息与其他账户重复']);
+            }
+
+            $data['updated_at'] = date('Y-m-d H:i:s');
+
+            $result = Db::name('dianji_deposit_accounts')
                 ->where('id', $id)
-                ->find();
+                ->update($data);
 
-            if (!$withdrawal) {
-                return json(['code' => 0, 'message' => '提现记录不存在']);
-            }
-
-            if ($withdrawal['status'] != 0) {
-                return json(['code' => 0, 'message' => '该记录已处理，无法重复操作']);
-            }
-
-            // 开启事务
-            Db::startTrans();
-
-            try {
-                $adminUid = $this->getAdminId(); // 获取当前管理员ID
-                $updateData = [
-                    'success_time' => date('Y-m-d H:i:s'),
-                    'admin_uid' => $adminUid,
-                    'msg' => $remark ?: ($action === 'approve' ? '审核通过' : '审核拒绝')
-                ];
-
-                if ($action === 'approve') {
-                    // 审核通过
-                    $updateData['status'] = 1;
-                    
-                    // 更新提现记录
-                    Db::name('common_pay_cash')
-                        ->where('id', $id)
-                        ->update($updateData);
-
-                    // 记录资金流水 - 提现完成
-                    $this->addMoneyLog(
-                        $withdrawal['u_id'],
-                        2, // 支出
-                        201, // 提现
-                        $withdrawal['money_balance'],
-                        $withdrawal['money_balance'], // 余额已在申请时扣除
-                        0, // 此时不再变动余额
-                        $id,
-                        "提现审核通过 - 提现ID:{$id} 金额:{$withdrawal['money']}$ 实际到账:{$withdrawal['momey_actual']}$"
-                    );
-
-                    $message = '审核通过成功';
-
-                } elseif ($action === 'reject') {
-                    // 审核拒绝，需要返还金额到用户账户
-                    $updateData['status'] = 2;
-                    
-                    // 获取用户当前余额
-                    $user = Db::name('common_user')
-                        ->where('id', $withdrawal['u_id'])
-                        ->field('money_balance')
-                        ->find();
-
-                    if (!$user) {
-                        throw new Exception('用户不存在');
-                    }
-
-                    $oldBalance = $user['money_balance'];
-                    $newBalance = bcadd($oldBalance, $withdrawal['money'], 2);
-
-                    // 更新用户余额
-                    Db::name('common_user')
-                        ->where('id', $withdrawal['u_id'])
-                        ->update(['money_balance' => $newBalance]);
-
-                    // 更新提现记录
-                    Db::name('common_pay_cash')
-                        ->where('id', $id)
-                        ->update($updateData);
-
-                    // 记录资金流水 - 提现退款
-                    $this->addMoneyLog(
-                        $withdrawal['u_id'],
-                        1, // 收入
-                        401, // 提现退款
-                        $oldBalance,
-                        $newBalance,
-                        $withdrawal['money'],
-                        $id,
-                        "提现审核拒绝退款 - 提现ID:{$id} 退款金额:{$withdrawal['money']}$ 原因:{$remark}"
-                    );
-
-                    $message = '已拒绝该提现申请并退还金额';
-                } else {
-                    throw new Exception('无效的操作类型');
-                }
-
-                // 提交事务
-                Db::commit();
-
-                return json([
-                    'code' => 1,
-                    'message' => $message,
-                    'data' => [
-                        'id' => $id,
-                        'status' => $updateData['status'],
-                        'successTime' => $updateData['success_time'],
-                        'adminUid' => $adminUid,
-                        'remark' => $updateData['msg']
-                    ]
-                ]);
-
-            } catch (Exception $e) {
-                Db::rollback();
-                throw $e;
+            if ($result !== false) {
+                return json(['code' => 1, 'message' => '更新成功']);
+            } else {
+                return json(['code' => 0, 'message' => '更新失败']);
             }
 
         } catch (Exception $e) {
-            Log::error('审核提现申请失败: ' . $e->getMessage());
+            Log::error('更新账户失败: ' . $e->getMessage());
             return json(['code' => 0, 'message' => $e->getMessage()]);
         }
     }
 
     /**
-     * 批量审核提现申请
-     * 路由: POST /api/user-pay-cash/batch-approve
+     * 删除账户
+     * 路由: POST /api/zhanghu/del
      */
-    public function batchApprove()
+    public function del()
+    {
+        try {
+            $id = (int)$this->request->post('id');
+            
+            if (!$id) {
+                return json(['code' => 0, 'message' => '缺少账户ID']);
+            }
+
+            // 检查账户是否存在
+            $account = Db::name('dianji_deposit_accounts')->where('id', $id)->find();
+            if (!$account) {
+                return json(['code' => 0, 'message' => '账户不存在']);
+            }
+
+            $result = Db::name('dianji_deposit_accounts')->where('id', $id)->delete();
+
+            if ($result) {
+                return json(['code' => 1, 'message' => '删除成功']);
+            } else {
+                return json(['code' => 0, 'message' => '删除失败']);
+            }
+
+        } catch (Exception $e) {
+            Log::error('删除账户失败: ' . $e->getMessage());
+            return json(['code' => 0, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 切换账户状态
+     * 路由: POST /api/zhanghu/status
+     */
+    public function status()
+    {
+        try {
+            $id = (int)$this->request->post('id');
+            $isActive = (int)$this->request->post('isActive');
+            
+            if (!$id) {
+                return json(['code' => 0, 'message' => '缺少账户ID']);
+            }
+
+            $result = Db::name('dianji_deposit_accounts')
+                ->where('id', $id)
+                ->update([
+                    'is_active' => $isActive,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            if ($result !== false) {
+                $statusText = $isActive ? '启用' : '禁用';
+                return json(['code' => 1, 'message' => $statusText . '成功']);
+            } else {
+                return json(['code' => 0, 'message' => '操作失败']);
+            }
+
+        } catch (Exception $e) {
+            Log::error('切换账户状态失败: ' . $e->getMessage());
+            return json(['code' => 0, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 批量操作账户状态
+     * 路由: POST /api/zhanghu/batch_status
+     */
+    public function batchStatus()
     {
         try {
             $ids = $this->request->post('ids', []);
-            $action = $this->request->post('action'); // approve 或 reject
-            $remark = $this->request->post('remark', '');
-            $password = $this->request->post('password', '');
-
-            if (empty($ids) || !$action) {
-                return json(['code' => 0, 'message' => '缺少必要参数']);
+            $isActive = (int)$this->request->post('isActive');
+            
+            if (empty($ids)) {
+                return json(['code' => 0, 'message' => '请选择要操作的账户']);
             }
 
-            // 验证操作密码
-            if (!empty($password) && !$this->verifyOperationPassword($password)) {
-                return json(['code' => 0, 'message' => '操作密码错误']);
-            }
-
-            // 获取待处理的提现记录
-            $withdrawals = Db::name('common_pay_cash')
+            $result = Db::name('dianji_deposit_accounts')
                 ->where('id', 'in', $ids)
-                ->where('status', 0)
-                ->select()
-                ->toArray();
-
-            if (empty($withdrawals)) {
-                return json(['code' => 0, 'message' => '没有找到待处理的提现记录']);
-            }
-
-            $successCount = 0;
-            $failedCount = 0;
-            $errors = [];
-
-            // 开启事务
-            Db::startTrans();
-
-            try {
-                foreach ($withdrawals as $withdrawal) {
-                    try {
-                        $this->processSingleWithdrawal($withdrawal, $action, $remark);
-                        $successCount++;
-                    } catch (Exception $e) {
-                        $failedCount++;
-                        $errors[] = "ID {$withdrawal['id']}: " . $e->getMessage();
-                    }
-                }
-
-                if ($failedCount > 0) {
-                    Db::rollback();
-                    return json(['code' => 0, 'message' => '批量处理失败: ' . implode('; ', $errors)]);
-                } else {
-                    Db::commit();
-                }
-
-                $statusText = $action === 'approve' ? '通过' : '拒绝';
-                return json([
-                    'code' => 1,
-                    'message' => "已批量{$statusText} {$successCount} 条申请",
-                    'data' => [
-                        'successCount' => $successCount,
-                        'processedIds' => array_column($withdrawals, 'id'),
-                        'action' => $action,
-                        'remark' => $remark
-                    ]
+                ->update([
+                    'is_active' => $isActive,
+                    'updated_at' => date('Y-m-d H:i:s')
                 ]);
 
-            } catch (Exception $e) {
-                Db::rollback();
-                throw $e;
-            }
+            $statusText = $isActive ? '启用' : '禁用';
+            return json(['code' => 1, 'message' => "批量{$statusText}成功，共处理 {$result} 个账户"]);
 
         } catch (Exception $e) {
-            Log::error('批量审核提现申请失败: ' . $e->getMessage());
+            Log::error('批量切换状态失败: ' . $e->getMessage());
             return json(['code' => 0, 'message' => $e->getMessage()]);
         }
     }
 
     /**
-     * 获取提现统计
-     * 路由: POST /api/user-pay-cash/statistics
+     * 获取统计数据
+     * 路由: POST /api/zhanghu/statistics
      */
     public function statistics()
     {
         try {
-            $post = $this->request->post();
-            $statistics = $this->getStatistics($post);
+            $methodCode = $this->request->post('methodCode', '');
+            $isActive = $this->request->post('isActive', '');
+            $start = $this->request->post('start', '');
+            $end = $this->request->post('end', '');
+
+            $query = Db::name('dianji_deposit_accounts');
+
+            // 应用筛选条件
+            if (!empty($methodCode)) {
+                $query->where('method_code', $methodCode);
+            }
+            if ($isActive !== '') {
+                $query->where('is_active', (int)$isActive);
+            }
+            if (!empty($start)) {
+                $query->where('created_at', '>=', $start);
+            }
+            if (!empty($end)) {
+                $query->where('created_at', '<=', $end);
+            }
+
+            $stats = $query->field([
+                'COUNT(*) as total_count',
+                'SUM(CASE WHEN method_code = "aba" THEN 1 ELSE 0 END) as aba_count',
+                'SUM(CASE WHEN method_code = "huiwang" THEN 1 ELSE 0 END) as huiwang_count',
+                'SUM(CASE WHEN method_code = "usdt" THEN 1 ELSE 0 END) as usdt_count',
+                'SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_count',
+                'SUM(daily_limit) as total_daily_limit'
+            ])->find();
+
+            $statistics = [
+                'totalCount' => (int)$stats['total_count'],
+                'abaCount' => (int)$stats['aba_count'],
+                'huiwangCount' => (int)$stats['huiwang_count'],
+                'usdtCount' => (int)$stats['usdt_count'],
+                'activeCount' => (int)$stats['active_count'],
+                'totalDailyLimit' => number_format($stats['total_daily_limit'] ?: 0, 2)
+            ];
+
             return json(['code' => 1, 'message' => '获取成功', 'data' => $statistics]);
+
         } catch (Exception $e) {
-            Log::error('获取提现统计失败: ' . $e->getMessage());
+            Log::error('获取统计数据失败: ' . $e->getMessage());
             return json(['code' => 0, 'message' => '获取统计数据失败']);
         }
     }
 
     /**
-     * 导出提现记录
-     * 路由: POST /api/user-pay-cash/export
+     * 导出账户列表
+     * 路由: POST /api/zhanghu/export
      */
     public function export()
     {
         try {
-            $post = $this->request->post();
-
-            // 这里可以实现Excel导出逻辑
-            // 暂时返回模拟数据
+            $conditions = $this->request->post();
+            
             $exportData = [
-                'filename' => '会员提现记录_' . date('YmdHis') . '.xlsx',
-                'downloadUrl' => '/download/withdrawal_' . date('YmdHis') . '.xlsx',
-                'totalRecords' => 0, // 实际导出记录数
+                'filename' => '收款账户列表_' . date('YmdHis') . '.xlsx',
+                'downloadUrl' => '/download/deposit_accounts_' . date('YmdHis') . '.xlsx',
+                'totalRecords' => 0,
                 'exportTime' => date('Y-m-d H:i:s')
             ];
 
             return json(['code' => 1, 'message' => '导出成功', 'data' => $exportData]);
+
         } catch (Exception $e) {
-            Log::error('导出提现记录失败: ' . $e->getMessage());
+            Log::error('导出失败: ' . $e->getMessage());
             return json(['code' => 0, 'message' => '导出失败']);
         }
     }
 
     /**
-     * 获取用户提现账户
-     * 路由: POST /api/user-pay-cash/user-accounts
-     */
-    public function userAccounts()
-    {
-        try {
-            $userId = (int)$this->request->post('userId');
-
-            if (!$userId) {
-                return json(['code' => 0, 'message' => '缺少用户ID参数']);
-            }
-
-            $accounts = Db::name('dianji_user_withdrawal_accounts')
-                ->where('user_id', $userId)
-                ->where('status', 1)
-                ->order('is_default desc, id desc')
-                ->select()
-                ->toArray();
-
-            return json(['code' => 1, 'message' => '获取成功', 'data' => $accounts]);
-        } catch (Exception $e) {
-            Log::error('获取用户提现账户失败: ' . $e->getMessage());
-            return json(['code' => 0, 'message' => '获取账户信息失败']);
-        }
-    }
-
-    /**
      * 获取支付方式配置
-     * 路由: POST /api/user-pay-cash/payment-methods
+     * 路由: POST /api/zhanghu/payment_methods
      */
     public function paymentMethods()
     {
         try {
-            // 从系统配置或数据库获取支付方式配置
-            $methods = [
+            $config = [
                 [
-                    'type' => 'usdt',
-                    'name' => 'USDT',
-                    'icon' => '/images/usdt.png',
-                    'enabled' => true,
-                    'feeRate' => 2.0,
-                    'minAmount' => 10,
-                    'maxAmount' => 50000,
-                    'networks' => ['TRC20', 'ERC20']
-                ],
-                [
-                    'type' => 'aba',
+                    'code' => 'aba',
                     'name' => 'ABA银行',
-                    'icon' => '/images/aba.png',
-                    'enabled' => true,
-                    'feeRate' => 1.5,
-                    'minAmount' => 20,
-                    'maxAmount' => 100000
+                    'icon' => 'el-icon-bank-card',
+                    'color' => 'primary',
+                    'enabled' => true
                 ],
                 [
-                    'type' => 'huiwang',
-                    'name' => '汇旺',
-                    'icon' => '/images/huiwang.png',
+                    'code' => 'huiwang',
+                    'name' => '汇旺支付',
+                    'icon' => 'el-icon-mobile',
+                    'color' => 'warning',
+                    'enabled' => true
+                ],
+                [
+                    'code' => 'usdt',
+                    'name' => 'USDT钱包',
+                    'icon' => 'el-icon-coin',
+                    'color' => 'success',
                     'enabled' => true,
-                    'feeRate' => 2.5,
-                    'minAmount' => 50,
-                    'maxAmount' => 20000
+                    'networks' => ['TRC20', 'ERC20', 'BSC']
                 ]
             ];
 
-            return json(['code' => 1, 'message' => '获取成功', 'data' => $methods]);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $config]);
+
         } catch (Exception $e) {
             Log::error('获取支付方式配置失败: ' . $e->getMessage());
             return json(['code' => 0, 'message' => '获取配置失败']);
@@ -497,212 +412,157 @@ class UserPayCash extends Base
     }
 
     /**
-     * 获取管理员列表
-     * 路由: POST /api/user-pay-cash/admin-users
+     * 更新账户使用统计
+     * 路由: POST /api/zhanghu/update_usage
      */
-    public function adminUsers()
+    public function updateUsage()
     {
         try {
-            $admins = Db::name('common_admin')
-                ->field('id, user_name as username, remarks as nickname, role')
-                ->order('id desc')
-                ->select()
-                ->toArray();
-
-            // 处理管理员数据格式
-            foreach ($admins as &$admin) {
-                // 如果remarks为空或为'0'，则使用user_name作为nickname
-                if (empty($admin['nickname']) || $admin['nickname'] === '0') {
-                    $admin['nickname'] = $admin['username'];
-                }
+            $id = (int)$this->request->post('id');
+            
+            if (!$id) {
+                return json(['code' => 0, 'message' => '缺少账户ID']);
             }
 
-            return json(['code' => 1, 'message' => '获取成功', 'data' => $admins]);
+            $result = Db::name('dianji_deposit_accounts')
+                ->where('id', $id)
+                ->inc('usage_count')
+                ->update(['last_used_at' => date('Y-m-d H:i:s')]);
+
+            if ($result !== false) {
+                return json(['code' => 1, 'message' => '更新成功']);
+            } else {
+                return json(['code' => 0, 'message' => '更新失败']);
+            }
+
         } catch (Exception $e) {
-            Log::error('获取管理员列表失败: ' . $e->getMessage());
-            return json(['code' => 0, 'message' => '获取管理员列表失败']);
+            Log::error('更新使用统计失败: ' . $e->getMessage());
+            return json(['code' => 0, 'message' => $e->getMessage()]);
         }
     }
 
     /**
-     * 获取统计数据
+     * 验证账户数据
      */
-    private function getStatistics($conditions = [])
+    private function validateAccountData($isAdd = true)
     {
-        try {
-            $query = Db::name('common_pay_cash as pc')
-                ->leftJoin('common_user as u', 'pc.u_id = u.id');
-
-            // 应用筛选条件
-            $this->applyConditions($query, $conditions);
-
-            $stats = $query->field([
-                'COUNT(*) as total_count',
-                'SUM(CASE WHEN pc.status = 0 THEN 1 ELSE 0 END) as pending_count',
-                'SUM(CASE WHEN pc.status = 1 THEN 1 ELSE 0 END) as approved_count',
-                'SUM(CASE WHEN pc.status = 2 THEN 1 ELSE 0 END) as rejected_count',
-                'SUM(pc.money) as total_amount',
-                'SUM(pc.money_fee) as total_fee',
-                'SUM(pc.momey_actual) as total_actual'
-            ])->find();
-
-            return [
-                'totalAmount' => number_format($stats['total_amount'] ?: 0, 2),
-                'totalFee' => number_format($stats['total_fee'] ?: 0, 2),
-                'totalActual' => number_format($stats['total_actual'] ?: 0, 2),
-                'pendingCount' => (int)$stats['pending_count'],
-                'approvedCount' => (int)$stats['approved_count'],
-                'rejectedCount' => (int)$stats['rejected_count']
-            ];
-        } catch (Exception $e) {
-            Log::error('获取统计数据失败: ' . $e->getMessage());
-            return [
-                'totalAmount' => '0.00',
-                'totalFee' => '0.00',
-                'totalActual' => '0.00',
-                'pendingCount' => 0,
-                'approvedCount' => 0,
-                'rejectedCount' => 0
-            ];
+        $data = [];
+        
+        // 通用字段
+        if ($isAdd) {
+            $data['method_code'] = $this->request->post('methodCode', '');
+            if (empty($data['method_code'])) {
+                return ['error' => '请选择支付方式'];
+            }
         }
+
+        $data['account_name'] = $this->request->post('accountName', '');
+        if (empty($data['account_name'])) {
+            return ['error' => '请输入账户名称'];
+        }
+
+        $data['is_active'] = (int)$this->request->post('isActive', 1);
+        $data['daily_limit'] = $this->request->post('dailyLimit', 0);
+        $data['balance_limit'] = $this->request->post('balanceLimit', null);
+        $data['remark'] = $this->request->post('remark', '');
+
+        // 根据支付方式验证特定字段
+        $methodCode = $isAdd ? $data['method_code'] : $this->request->post('methodCode', '');
+        
+        switch ($methodCode) {
+            case 'aba':
+                $data['account_number'] = $this->request->post('accountNumber', '');
+                $data['bank_name'] = $this->request->post('bankName', '');
+                if (empty($data['account_number'])) {
+                    return ['error' => '请输入银行账户号码'];
+                }
+                if (empty($data['bank_name'])) {
+                    return ['error' => '请输入银行名称'];
+                }
+                break;
+
+            case 'huiwang':
+                $data['account_number'] = $this->request->post('accountNumber', '');
+                $data['phone_number'] = $this->request->post('phoneNumber', '');
+                if (empty($data['account_number'])) {
+                    return ['error' => '请输入汇旺账号'];
+                }
+                if (empty($data['phone_number'])) {
+                    return ['error' => '请输入手机号码'];
+                }
+                break;
+
+            case 'usdt':
+                $data['wallet_address'] = $this->request->post('walletAddress', '');
+                $data['network_type'] = $this->request->post('networkType', '');
+                $data['qr_code_url'] = $this->request->post('qrCodeUrl', '');
+                if (empty($data['wallet_address'])) {
+                    return ['error' => '请输入钱包地址'];
+                }
+                if (empty($data['network_type'])) {
+                    return ['error' => '请选择网络类型'];
+                }
+                break;
+
+            default:
+                return ['error' => '不支持的支付方式'];
+        }
+
+        return $data;
     }
 
     /**
-     * 应用查询条件
+     * 检查账户是否已存在
      */
-    private function applyConditions($query, $conditions)
+    private function checkAccountExists($data, $excludeId = 0)
     {
-        if (isset($conditions['status']) && $conditions['status'] !== '') {
-            $query->where('pc.status', (int)$conditions['status']);
+        $query = Db::name('dianji_deposit_accounts')
+            ->where('method_code', $data['method_code']);
+
+        if ($excludeId > 0) {
+            $query->where('id', '<>', $excludeId);
         }
 
-        if (isset($conditions['start']) && !empty($conditions['start'])) {
-            $query->where('pc.create_time', '>=', $conditions['start']);
+        switch ($data['method_code']) {
+            case 'aba':
+                $query->where('account_number', $data['account_number']);
+                break;
+            case 'huiwang':
+                $query->where('account_number', $data['account_number']);
+                break;
+            case 'usdt':
+                $query->where('wallet_address', $data['wallet_address']);
+                break;
         }
 
-        if (isset($conditions['end']) && !empty($conditions['end'])) {
-            $query->where('pc.create_time', '<=', $conditions['end']);
-        }
+        return $query->count() > 0;
     }
 
     /**
-     * 处理单个提现申请
+     * 格式化账户数据
      */
-    private function processSingleWithdrawal($withdrawal, $action, $remark)
+    private function formatAccountData($data)
     {
-        $adminUid = $this->getAdminId();
-        $updateData = [
-            'success_time' => date('Y-m-d H:i:s'),
-            'admin_uid' => $adminUid,
-            'msg' => $remark ?: ($action === 'approve' ? '批量审核通过' : '批量审核拒绝')
+        $formatted = [
+            'id' => $data['id'],
+            'methodCode' => $data['method_code'],
+            'accountName' => $data['account_name'],
+            'accountNumber' => $data['account_number'],
+            'bankName' => $data['bank_name'],
+            'phoneNumber' => $data['phone_number'],
+            'walletAddress' => $data['wallet_address'],
+            'networkType' => $data['network_type'],
+            'qrCodeUrl' => $data['qr_code_url'],
+            'isActive' => (int)$data['is_active'],
+            'dailyLimit' => $data['daily_limit'],
+            'balanceLimit' => $data['balance_limit'],
+            'usageCount' => (int)$data['usage_count'],
+            'lastUsedAt' => $data['last_used_at'],
+            'remark' => $data['remark'],
+            'createdAt' => $data['created_at'],
+            'updatedAt' => $data['updated_at']
         ];
 
-        if ($action === 'approve') {
-            $updateData['status'] = 1;
-            
-            // 更新提现记录
-            Db::name('common_pay_cash')
-                ->where('id', $withdrawal['id'])
-                ->update($updateData);
-
-            // 记录资金流水
-            $this->addMoneyLog(
-                $withdrawal['u_id'],
-                2,
-                201,
-                $withdrawal['money_balance'],
-                $withdrawal['money_balance'],
-                0,
-                $withdrawal['id'],
-                "批量提现审核通过 - 提现ID:{$withdrawal['id']}"
-            );
-
-        } elseif ($action === 'reject') {
-            $updateData['status'] = 2;
-            
-            // 获取用户当前余额并返还
-            $user = Db::name('common_user')
-                ->where('id', $withdrawal['u_id'])
-                ->field('money_balance')
-                ->find();
-
-            if (!$user) {
-                throw new Exception("用户不存在 (ID: {$withdrawal['u_id']})");
-            }
-
-            $oldBalance = $user['money_balance'];
-            $newBalance = bcadd($oldBalance, $withdrawal['money'], 2);
-
-            // 更新用户余额
-            Db::name('common_user')
-                ->where('id', $withdrawal['u_id'])
-                ->update(['money_balance' => $newBalance]);
-
-            // 更新提现记录
-            Db::name('common_pay_cash')
-                ->where('id', $withdrawal['id'])
-                ->update($updateData);
-
-            // 记录资金流水
-            $this->addMoneyLog(
-                $withdrawal['u_id'],
-                1,
-                401,
-                $oldBalance,
-                $newBalance,
-                $withdrawal['money'],
-                $withdrawal['id'],
-                "批量提现审核拒绝退款 - 提现ID:{$withdrawal['id']}"
-            );
-        }
-    }
-
-    /**
-     * 添加资金流水记录
-     */
-    private function addMoneyLog($uid, $type, $status, $moneyBefore, $moneyEnd, $money, $sourceId, $mark)
-    {
-        Db::name('common_pay_money_log')->insert([
-            'create_time' => date('Y-m-d H:i:s'),
-            'type' => $type,
-            'status' => $status,
-            'money_before' => $moneyBefore,
-            'money_end' => $moneyEnd,
-            'money' => $money,
-            'uid' => $uid,
-            'source_id' => $sourceId,
-            'market_uid' => 0,
-            'mark' => $mark
-        ]);
-    }
-
-    /**
-     * 验证操作密码
-     */
-    private function verifyOperationPassword($password)
-    {
-        // 这里实现密码验证逻辑
-        // 可以从配置文件或数据库获取正确的密码
-        $correctPassword = '123456'; // 示例密码
-        return $password === $correctPassword;
-    }
-
-    /**
-     * 获取当前管理员ID
-     */
-    private function getAdminId()
-    {
-        // 这里需要从session或token中获取当前登录的管理员ID
-        // 可以从Base控制器中获取，或者从JWT token中解析
-        
-        // 示例：从session中获取
-        // $adminId = session('admin_id');
-        // if (!$adminId) {
-        //     throw new Exception('未登录或登录已过期');
-        // }
-        // return $adminId;
-        
-        // 暂时返回默认值（实际项目中需要修改）
-        return 1; // 示例管理员ID
+        return $formatted;
     }
 }
