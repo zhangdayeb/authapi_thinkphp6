@@ -19,134 +19,41 @@ class UserPayCash extends Base
     }
 
     /**
-     * 会员提现列表
+     * 会员提现列表（简化调试版）
      * 路由: POST /api/user-pay-cash/list
      */
     public function list()
     {
         try {
-            // 获取请求参数
+            // 获取基本参数
             $page = (int)$this->request->post('page', 1);
             $limit = (int)$this->request->post('limit', 10);
-            $username = $this->request->post('username', '');
-            $userId = (int)$this->request->post('userId', 0);
-            $phone = $this->request->post('phone', '');
-            $status = $this->request->post('status', '');
-            $payType = $this->request->post('payType', '');
-            $start = $this->request->post('start', '');
-            $end = $this->request->post('end', '');
-            $minAmount = (float)$this->request->post('minAmount', 0);
-            $maxAmount = (float)$this->request->post('maxAmount', 0);
-            $adminName = $this->request->post('adminName', '');
 
-            // 构建查询条件
-            $query = Db::table('common_pay_cash as pc')
-                ->leftJoin('common_user as u', 'pc.u_id = u.id')
-                ->leftJoin('dianji_user_withdrawal_accounts as wa', 'u.id = wa.user_id AND wa.is_default = 1')
-                ->field([
-                    'pc.*',
-                    'u.user_name',
-                    'u.type as user_type',
-                    'u.is_fictitious',
-                    'u.phone as user_phone',
-                    'u.status as user_status',
-                    'wa.account_name',
-                    'wa.account_number',
-                    'wa.wallet_address',
-                    'wa.network_type'
-                ]);
-
-            // 添加筛选条件
-            if (!empty($username)) {
-                $query->where('u.user_name', 'like', '%' . $username . '%');
-            }
-
-            if ($userId > 0) {
-                $query->where('pc.u_id', $userId);
-            }
-
-            if (!empty($phone)) {
-                $query->where('u.phone', 'like', '%' . $phone . '%');
-            }
-
-            if ($status !== '') {
-                $query->where('pc.status', (int)$status);
-            }
-
-            if (!empty($payType)) {
-                $query->where('pc.pay_type', $payType);
-            }
-
-            if (!empty($start)) {
-                $query->where('pc.create_time', '>=', $start);
-            }
-
-            if (!empty($end)) {
-                $query->where('pc.create_time', '<=', $end);
-            }
-
-            if ($minAmount > 0) {
-                $query->where('pc.money', '>=', $minAmount);
-            }
-
-            if ($maxAmount > 0) {
-                $query->where('pc.money', '<=', $maxAmount);
-            }
-
-            if (!empty($adminName)) {
-                // 根据管理员用户名查询管理员ID
-                $adminUser = Db::table('common_admin')
-                    ->where('user_name', $adminName)
-                    ->field('id')
-                    ->find();
-                if ($adminUser) {
-                    $query->where('pc.admin_uid', $adminUser['id']);
-                }
-            }
-
-            // 获取总数
-            $total = $query->count();
-
-            // 分页查询
+            // 简单查询，先不使用复杂的JOIN
+            $total = Db::name('common_pay_cash')->count();
+            
             $offset = ($page - 1) * $limit;
-            $list = $query->order('pc.create_time', 'desc')
-                         ->limit($offset, $limit)
-                         ->select()
-                         ->toArray();
+            $list = Db::name('common_pay_cash')
+                ->order('create_time', 'desc')
+                ->limit($offset, $limit)
+                ->select()
+                ->toArray();
 
-            // 处理数据格式
+            // 简化数据格式处理
             foreach ($list as &$item) {
-                // 格式化时间
                 $item['createTime'] = $item['create_time'];
                 $item['successTime'] = $item['success_time'];
-                
-                // 格式化用户信息
-                $item['userName'] = $item['user_name'];
+                $item['userName'] = '用户' . $item['u_id']; // 临时简化
                 $item['uId'] = $item['u_id'];
-                $item['userPhone'] = $item['user_phone'];
-                $item['userType'] = $item['user_type'];
-                $item['userStatus'] = $item['user_status'];
-                $item['isFictitious'] = $item['is_fictitious'];
-                
-                // 格式化收款信息
+                $item['userPhone'] = '';
+                $item['userType'] = 2;
+                $item['userStatus'] = 1;
+                $item['isFictitious'] = 0;
                 $item['uBankName'] = $item['u_bank_name'];
                 $item['uBackCard'] = $item['u_back_card'];
                 $item['uBackUserName'] = $item['u_back_user_name'];
-                
-                // 获取管理员名称
-                if ($item['admin_uid'] > 0) {
-                    $admin = Db::table('common_admin')
-                        ->where('id', $item['admin_uid'])
-                        ->field('user_name, remarks')
-                        ->find();
-                    $item['adminName'] = $admin ? ($admin['remarks'] ?: $admin['user_name']) : '';
-                } else {
-                    $item['adminName'] = null;
-                }
+                $item['adminName'] = null;
             }
-
-            // 获取统计数据
-            $statistics = $this->getStatistics($query->getOptions());
 
             $result = [
                 'data' => $list,
@@ -154,14 +61,21 @@ class UserPayCash extends Base
                 'current_page' => $page,
                 'per_page' => $limit,
                 'last_page' => ceil($total / $limit),
-                'statistics' => $statistics
+                'statistics' => [
+                    'totalAmount' => '0.00',
+                    'totalFee' => '0.00',
+                    'totalActual' => '0.00',
+                    'pendingCount' => 0,
+                    'approvedCount' => 0,
+                    'rejectedCount' => 0
+                ]
             ];
 
-            $this->success($result);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $result]);
 
         } catch (Exception $e) {
             Log::error('获取提现列表失败: ' . $e->getMessage());
-            $this->error('获取数据失败');
+            return json(['code' => 0, 'message' => '获取数据失败: ' . $e->getMessage()]);
         }
     }
 
@@ -175,10 +89,10 @@ class UserPayCash extends Base
             $id = (int)$this->request->post('id');
             
             if (!$id) {
-                $this->error('缺少必要参数');
+                return json(['code' => 0, 'message' => '缺少必要参数']);
             }
 
-            $detail = Db::table('common_pay_cash as pc')
+            $detail = Db::name('common_pay_cash as pc')
                 ->leftJoin('common_user as u', 'pc.u_id = u.id')
                 ->leftJoin('dianji_user_withdrawal_accounts as wa', 'u.id = wa.user_id AND wa.is_default = 1')
                 ->field([
@@ -201,7 +115,7 @@ class UserPayCash extends Base
                 ->find();
 
             if (!$detail) {
-                $this->error('记录不存在');
+                return json(['code' => 0, 'message' => '记录不存在']);
             }
 
             // 处理数据格式
@@ -219,7 +133,7 @@ class UserPayCash extends Base
 
             // 获取管理员信息
             if ($detail['admin_uid'] > 0) {
-                $admin = Db::table('common_admin')
+                $admin = Db::name('common_admin')
                     ->where('id', $detail['admin_uid'])
                     ->field('user_name, remarks')
                     ->find();
@@ -242,11 +156,11 @@ class UserPayCash extends Base
                 'totalWithdraw' => $detail['money_total_withdraw']
             ];
 
-            $this->success($detail);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $detail]);
 
         } catch (Exception $e) {
             Log::error('获取提现详情失败: ' . $e->getMessage());
-            $this->error('获取详情失败');
+            return json(['code' => 0, 'message' => '获取详情失败']);
         }
     }
 
@@ -263,25 +177,25 @@ class UserPayCash extends Base
             $password = $this->request->post('password', '');
 
             if (!$id || !$action) {
-                $this->error('缺少必要参数');
+                return json(['code' => 0, 'message' => '缺少必要参数']);
             }
 
             // 验证操作密码（如果提供）
             if (!empty($password) && !$this->verifyOperationPassword($password)) {
-                $this->error('操作密码错误');
+                return json(['code' => 0, 'message' => '操作密码错误']);
             }
 
             // 获取提现记录
-            $withdrawal = Db::table('common_pay_cash')
+            $withdrawal = Db::name('common_pay_cash')
                 ->where('id', $id)
                 ->find();
 
             if (!$withdrawal) {
-                $this->error('提现记录不存在');
+                return json(['code' => 0, 'message' => '提现记录不存在']);
             }
 
             if ($withdrawal['status'] != 0) {
-                $this->error('该记录已处理，无法重复操作');
+                return json(['code' => 0, 'message' => '该记录已处理，无法重复操作']);
             }
 
             // 开启事务
@@ -300,7 +214,7 @@ class UserPayCash extends Base
                     $updateData['status'] = 1;
                     
                     // 更新提现记录
-                    Db::table('common_pay_cash')
+                    Db::name('common_pay_cash')
                         ->where('id', $id)
                         ->update($updateData);
 
@@ -323,7 +237,7 @@ class UserPayCash extends Base
                     $updateData['status'] = 2;
                     
                     // 获取用户当前余额
-                    $user = Db::table('common_user')
+                    $user = Db::name('common_user')
                         ->where('id', $withdrawal['u_id'])
                         ->field('money_balance')
                         ->find();
@@ -336,12 +250,12 @@ class UserPayCash extends Base
                     $newBalance = bcadd($oldBalance, $withdrawal['money'], 2);
 
                     // 更新用户余额
-                    Db::table('common_user')
+                    Db::name('common_user')
                         ->where('id', $withdrawal['u_id'])
                         ->update(['money_balance' => $newBalance]);
 
                     // 更新提现记录
-                    Db::table('common_pay_cash')
+                    Db::name('common_pay_cash')
                         ->where('id', $id)
                         ->update($updateData);
 
@@ -365,13 +279,16 @@ class UserPayCash extends Base
                 // 提交事务
                 Db::commit();
 
-                $this->success([
+                return json([
+                    'code' => 1,
                     'message' => $message,
-                    'id' => $id,
-                    'status' => $updateData['status'],
-                    'successTime' => $updateData['success_time'],
-                    'adminUid' => $adminUid,
-                    'remark' => $updateData['msg']
+                    'data' => [
+                        'id' => $id,
+                        'status' => $updateData['status'],
+                        'successTime' => $updateData['success_time'],
+                        'adminUid' => $adminUid,
+                        'remark' => $updateData['msg']
+                    ]
                 ]);
 
             } catch (Exception $e) {
@@ -381,7 +298,7 @@ class UserPayCash extends Base
 
         } catch (Exception $e) {
             Log::error('审核提现申请失败: ' . $e->getMessage());
-            $this->error($e->getMessage());
+            return json(['code' => 0, 'message' => $e->getMessage()]);
         }
     }
 
@@ -398,23 +315,23 @@ class UserPayCash extends Base
             $password = $this->request->post('password', '');
 
             if (empty($ids) || !$action) {
-                $this->error('缺少必要参数');
+                return json(['code' => 0, 'message' => '缺少必要参数']);
             }
 
             // 验证操作密码
             if (!empty($password) && !$this->verifyOperationPassword($password)) {
-                $this->error('操作密码错误');
+                return json(['code' => 0, 'message' => '操作密码错误']);
             }
 
             // 获取待处理的提现记录
-            $withdrawals = Db::table('common_pay_cash')
+            $withdrawals = Db::name('common_pay_cash')
                 ->where('id', 'in', $ids)
                 ->where('status', 0)
                 ->select()
                 ->toArray();
 
             if (empty($withdrawals)) {
-                $this->error('没有找到待处理的提现记录');
+                return json(['code' => 0, 'message' => '没有找到待处理的提现记录']);
             }
 
             $successCount = 0;
@@ -437,18 +354,21 @@ class UserPayCash extends Base
 
                 if ($failedCount > 0) {
                     Db::rollback();
-                    $this->error('批量处理失败: ' . implode('; ', $errors));
+                    return json(['code' => 0, 'message' => '批量处理失败: ' . implode('; ', $errors)]);
                 } else {
                     Db::commit();
                 }
 
                 $statusText = $action === 'approve' ? '通过' : '拒绝';
-                $this->success([
+                return json([
+                    'code' => 1,
                     'message' => "已批量{$statusText} {$successCount} 条申请",
-                    'successCount' => $successCount,
-                    'processedIds' => array_column($withdrawals, 'id'),
-                    'action' => $action,
-                    'remark' => $remark
+                    'data' => [
+                        'successCount' => $successCount,
+                        'processedIds' => array_column($withdrawals, 'id'),
+                        'action' => $action,
+                        'remark' => $remark
+                    ]
                 ]);
 
             } catch (Exception $e) {
@@ -458,7 +378,7 @@ class UserPayCash extends Base
 
         } catch (Exception $e) {
             Log::error('批量审核提现申请失败: ' . $e->getMessage());
-            $this->error($e->getMessage());
+            return json(['code' => 0, 'message' => $e->getMessage()]);
         }
     }
 
@@ -471,10 +391,10 @@ class UserPayCash extends Base
         try {
             $post = $this->request->post();
             $statistics = $this->getStatistics($post);
-            $this->success($statistics);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $statistics]);
         } catch (Exception $e) {
             Log::error('获取提现统计失败: ' . $e->getMessage());
-            $this->error('获取统计数据失败');
+            return json(['code' => 0, 'message' => '获取统计数据失败']);
         }
     }
 
@@ -496,10 +416,10 @@ class UserPayCash extends Base
                 'exportTime' => date('Y-m-d H:i:s')
             ];
 
-            $this->success($exportData);
+            return json(['code' => 1, 'message' => '导出成功', 'data' => $exportData]);
         } catch (Exception $e) {
             Log::error('导出提现记录失败: ' . $e->getMessage());
-            $this->error('导出失败');
+            return json(['code' => 0, 'message' => '导出失败']);
         }
     }
 
@@ -513,20 +433,20 @@ class UserPayCash extends Base
             $userId = (int)$this->request->post('userId');
 
             if (!$userId) {
-                $this->error('缺少用户ID参数');
+                return json(['code' => 0, 'message' => '缺少用户ID参数']);
             }
 
-            $accounts = Db::table('dianji_user_withdrawal_accounts')
+            $accounts = Db::name('dianji_user_withdrawal_accounts')
                 ->where('user_id', $userId)
                 ->where('status', 1)
                 ->order('is_default desc, id desc')
                 ->select()
                 ->toArray();
 
-            $this->success($accounts);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $accounts]);
         } catch (Exception $e) {
             Log::error('获取用户提现账户失败: ' . $e->getMessage());
-            $this->error('获取账户信息失败');
+            return json(['code' => 0, 'message' => '获取账户信息失败']);
         }
     }
 
@@ -569,10 +489,10 @@ class UserPayCash extends Base
                 ]
             ];
 
-            $this->success($methods);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $methods]);
         } catch (Exception $e) {
             Log::error('获取支付方式配置失败: ' . $e->getMessage());
-            $this->error('获取配置失败');
+            return json(['code' => 0, 'message' => '获取配置失败']);
         }
     }
 
@@ -583,7 +503,7 @@ class UserPayCash extends Base
     public function adminUsers()
     {
         try {
-            $admins = Db::table('common_admin')
+            $admins = Db::name('common_admin')
                 ->field('id, user_name as username, remarks as nickname, role')
                 ->order('id desc')
                 ->select()
@@ -597,10 +517,10 @@ class UserPayCash extends Base
                 }
             }
 
-            $this->success($admins);
+            return json(['code' => 1, 'message' => '获取成功', 'data' => $admins]);
         } catch (Exception $e) {
             Log::error('获取管理员列表失败: ' . $e->getMessage());
-            $this->error('获取管理员列表失败');
+            return json(['code' => 0, 'message' => '获取管理员列表失败']);
         }
     }
 
@@ -610,7 +530,7 @@ class UserPayCash extends Base
     private function getStatistics($conditions = [])
     {
         try {
-            $query = Db::table('common_pay_cash as pc')
+            $query = Db::name('common_pay_cash as pc')
                 ->leftJoin('common_user as u', 'pc.u_id = u.id');
 
             // 应用筛选条件
@@ -681,7 +601,7 @@ class UserPayCash extends Base
             $updateData['status'] = 1;
             
             // 更新提现记录
-            Db::table('common_pay_cash')
+            Db::name('common_pay_cash')
                 ->where('id', $withdrawal['id'])
                 ->update($updateData);
 
@@ -701,7 +621,7 @@ class UserPayCash extends Base
             $updateData['status'] = 2;
             
             // 获取用户当前余额并返还
-            $user = Db::table('common_user')
+            $user = Db::name('common_user')
                 ->where('id', $withdrawal['u_id'])
                 ->field('money_balance')
                 ->find();
@@ -714,12 +634,12 @@ class UserPayCash extends Base
             $newBalance = bcadd($oldBalance, $withdrawal['money'], 2);
 
             // 更新用户余额
-            Db::table('common_user')
+            Db::name('common_user')
                 ->where('id', $withdrawal['u_id'])
                 ->update(['money_balance' => $newBalance]);
 
             // 更新提现记录
-            Db::table('common_pay_cash')
+            Db::name('common_pay_cash')
                 ->where('id', $withdrawal['id'])
                 ->update($updateData);
 
@@ -742,7 +662,7 @@ class UserPayCash extends Base
      */
     private function addMoneyLog($uid, $type, $status, $moneyBefore, $moneyEnd, $money, $sourceId, $mark)
     {
-        Db::table('common_pay_money_log')->insert([
+        Db::name('common_pay_money_log')->insert([
             'create_time' => date('Y-m-d H:i:s'),
             'type' => $type,
             'status' => $status,
