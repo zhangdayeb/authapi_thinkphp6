@@ -268,6 +268,10 @@ class User extends Base
         if ($post['money_ststus'] == 92) {
             return $this->points_edit($post, $find);
         }
+        //编辑额度代理额度
+        if ($post['money_ststus'] == 88) {
+            return $this->rebate_balance($post, $find);
+        }
 
         return $this->failed('请求错误');
     }
@@ -378,6 +382,39 @@ class User extends Base
         try {
             $find->save();
             MoneyLog::post_insert_log(3,$status,$balance,$find->money_freeze,$money,$find->id,0,$mark,null,$this->request->admin_user->id);
+            $save = true;
+            Db::commit();
+        } catch (ValidateException $e) {
+            Db::rollback();
+            // 验证失败 输出错误信息
+            return $this->failed($e->getError());
+        }
+
+        if ($save) return $this->success([]);
+        return $this->failed('修改失败');
+    }
+
+    /**
+     * @param $post /数据
+     * @param $find /模型查询数据
+     * @return mixed
+     * 洗码费
+     */
+    protected function rebate_balance($post, $find)
+    {
+        $balance = $find->rebate_balance;
+
+        //state是 1时是增加
+        $find->rebate_balance = $post['money_change_type'] == 1 ? $find->rebate_balance + $post['change_money'] : $find->rebate_balance - $post['change_money'];
+        $status = $post['money_change_type'] == 1 ? 602 : 702;
+        $money =  $post['money_change_type'] == 1 ? $post['change_money'] : $post['change_money']* -1;
+        $mark = $this->request->admin_user->user_name.'操作洗码费修改,变化前'.$balance.',变化:'.$money;
+        //执行修改数据
+        $save = false;
+        Db::startTrans();
+        try {
+            $find->save();
+            MoneyLog::post_insert_log(3,$status,$balance,$find->rebate_balance,$money,$find->id,0,$mark,null,$this->request->admin_user->id);
             $save = true;
             Db::commit();
         } catch (ValidateException $e) {
