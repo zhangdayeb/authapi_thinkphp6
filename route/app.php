@@ -326,6 +326,17 @@ POST /api/zhanghu/export            -> ZhangHu::export()
 POST /api/zhanghu/payment_methods   -> ZhangHu::paymentMethods()
 POST /api/zhanghu/update_usage      -> ZhangHu::updateUsage()
 */
+
+// 在路由文件中修改
+Route::group('api/notification', function () {
+    Route::post('latest-records', 'log.TongZhi/getLatestRecords');
+    Route::post('latest-recharges', 'log.TongZhi/getLatestRecharges');
+    Route::post('latest-withdraws', 'log.TongZhi/getLatestWithdraws');
+    Route::post('mark-read', 'log.TongZhi/markNotificationsRead');
+    Route::post('test', 'log.TongZhi/test');
+    Route::post('trigger', 'log.TongZhi/triggerNotification');
+});
+
 // ====================================================================
 // 充值管理模块
 // ====================================================================
