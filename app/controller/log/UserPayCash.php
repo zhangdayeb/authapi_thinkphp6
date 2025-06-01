@@ -208,10 +208,15 @@ class UserPayCash extends Base
                     'admin_uid' => $adminUid,
                     'msg' => $remark ?: ($action === 'approve' ? '审核通过' : '审核拒绝')
                 ];
-
+            // $statusDbMap = [
+            //     'pending' => 0,     // 待审核
+            //     'processing' => 1,  // 处理中
+            //     'completed' => 2,   // 已完成
+            //     'rejected' => 3     // 已拒绝
+            // ];
                 if ($action === 'approve') {
                     // 审核通过
-                    $updateData['status'] = 1;
+                    $updateData['status'] = 2;
                     
                     // 更新提现记录
                     Db::name('common_pay_cash')
@@ -234,7 +239,7 @@ class UserPayCash extends Base
 
                 } elseif ($action === 'reject') {
                     // 审核拒绝，需要返还金额到用户账户
-                    $updateData['status'] = 2;
+                    $updateData['status'] = 3;
                     
                     // 获取用户当前余额
                     $user = Db::name('common_user')

@@ -10,12 +10,12 @@ var img_url_path_by_game_type = "wait_set"; // 等待设置中
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // 设置各种步进参数
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-var show_zhuzi_html_css_length_px = 36;
-var show_dalu_html_css_length_px = 36;
-var show_xiaolu_html_css_length_px = 18;
-var show_dayan_html_css_length_px = 18;
-var show_xiaoqiang_html_css_length_px = 18;
-var show_sanxing_html_css_length_px = 36;
+var show_zhuzi_html_css_length_px = 20;
+var show_dalu_html_css_length_px = 20;
+var show_xiaolu_html_css_length_px = 10;
+var show_dayan_html_css_length_px = 10;
+var show_xiaoqiang_html_css_length_px = 10;
+var show_sanxing_html_css_length_px = 20;
 // 展示 珠子 html 页面
 // function show_zhuzi_html() {
 //     show_msg("展示 珠子 html")

@@ -1,6 +1,6 @@
 /* 基本参数 */
 *{ margin: 0 auto; padding: 0 auto; list-style: none;}
-body{background-color: #070f29; margin: 0 auto; padding: 0 auto; position: relative;}
+body{background-color: #070f29; margin: 0 auto; padding: 0 auto; position: relative;width:100%; height:100%; }
 div{overflow: hidden;}
 /* 顶部导航 */
 .top{width: 100%; height: 7.375rem;  background-image: url(../img/top_bg.png); background-repeat: repeat-x;}
@@ -86,7 +86,7 @@ div{overflow: hidden;}
 .right_wenlu_xian_img_3 img{ width: 2.2rem; height: 2.2rem; border-radius: 1.1rem; }
 
 /* 行8 */
-.right_logo{left: 31rem; top: 18rem; color: #fef72f; font-size: 2.25rem; width: 13rem; height: 13rem; background-color: #2773E6;text-align: center;}
+.right_logo{left: 31rem; top: 18rem; color: #fef72f; font-size: 2.25rem; width: 13rem; height: 13rem; background-color: #011049;text-align: center;}
 .right_logo img{width: 100%; height: 100%;}
 .right_action_bg{left: 45rem; top: 18rem; width: 12.5rem; height: 12.5rem; border: 0.25rem solid #fef72f; border-radius: 50%;}
 .right_action_title_en{left: 47rem; top: 19.5rem; color: #fef72f; font-size: 4rem;}
@@ -141,3 +141,105 @@ div{overflow: hidden;}
 .wenlu_button{ width: 80px; background-color: #e64340; text-align: center; }
 .wenlu_button:hover{ background-color: #ffbe00; }
 #wenlu_show_red,#wenlu_show_blue{ width: 80px;}
+
+/* 展示结果  图像识别的方式 2 */
+.show_result_read_poker{ width:120rem; height: 68rem; left: 0rem; top: 0rem;  position: absolute; z-index: 5; overflow: hidden; }
+/* 预加载 */
+.read_poker_loading{ display: none; position: relative; background-color: #1FC94B; left: 8.5rem; top: 30.5rem; height: 12.5rem; width: 50rem; color: #00FFFF; opacity: 0.8; text-align: center; font-size: 8.25rem;}
+/* 显示扑克 */
+.read_poker_pai_result{ display: none; position: relative; background-color:#1FC94B; width: 120rem; height: 33rem; padding-top: 3rem; left: 0rem; top: 12rem;}
+.pai_result_poker_postion{clear: none; display: block; width: 16.5625rem; height: 25.4375rem; float: left; margin-left: 1rem;}
+.pai_result_poker_postion_rotate{transform: rotate(90deg);}
+.pai_result_poker_bjl{position: relative;}
+.pai_result_poker_lh{position: relative;}
+.pai_result_poker_nn{position: relative;}
+
+.pai_tip_name{position: relative; width: 99%; height: 4rem; top: 0.25rem; border: 0.3125rem solid #FFBE00;}
+.pai_tip_banker{width: 48%; float: left; clear: none; font-size: 3rem; color: red; text-align: center;}
+.pai_tip_player{width: 48%; float: right; clear: none; font-size: 3rem; color: blue; text-align: center;}
+/* 显示输赢结果 */
+.read_poker_result{ display: none; position: relative; background-color:#1FC94B; width: 120rem; height: 23rem; left: 0rem; top: 10rem; color: #E64340; text-align: center; font-size: 18rem;}
+/* 如果牌面错误 可以重新手工选择结果  */
+.read_poker_choose{display: none; width:120rem; height: 67.5rem; left: 0rem; top: 0rem;  position: relative; background-color:#1FC94B;}
+/* 选择花色 */
+.read_poker_choose_suit{display: none; position: relative; background-color:#1FC94B; width: 120rem; height: 28rem; padding-top: 3rem; left: 0rem; top: 20rem;}
+.read_poker_choose_suit_postion{clear: none; display: block; width: 16.5625rem; height: 25.4375rem; float: left; margin-left: 1rem;}
+/* 选择数字 */
+.read_poker_choose_rank{display: none;}
+.read_poker_choose_rank_postion{clear: none; display: block; width: 16.5625rem; height: 25.4375rem; float: left; margin: 1rem;}
+/* 开启音效 */
+.oepn_music{position: fixed; top: 1rem; right: 1rem; z-index: 99; width: 15rem; text-align: center; vertical-align: middle; line-height: 5rem; box-shadow: 0.125rem 0.125rem 0.125rem 0.125rem #0697EA; height: 5rem; border-radius: 25px; border: 2px solid #8AC007; background-color: #1C2BEA; color: #FFFFFF; font-size: 3rem; cursor: pointer;}
+/* 显示结果 */
+.show_pai{width: 44.5rem; height: 26rem; background-color: #1FC94B; position:absolute; z-index: 33; left: 0rem; bottom: 0rem;}
+.show_pai_top{width: 100%; height: 80%; background-color: #06A7EA; position: absolute; top: 0rem;}
+.show_pai_top img{ width: 100%; height:100%;}
+.show_pai_bottom{width: 100%; height: 20%; background-color: #01B90F; position: absolute; bottom: 0rem; color: #FFBE00; font-size: 5rem; line-height: 5rem; text-align: center;}
+.pai_1{transform: rotate(90deg); position: absolute; width: 8rem; height:12rem; overflow: hidden; top: -1.8rem; left: 6rem; background-color: #E64340; }
+.pai_2{position: absolute; width: 8rem; height:12rem; overflow: hidden; bottom: 0.225rem; left: 0.625rem; background-color: #E64340; }
+.pai_3{position: absolute; width: 8rem; height:12rem; overflow: hidden; bottom: 0.225rem; left: 12.25rem; background-color: #E64340; }
+.pai_4{position: absolute; width: 8rem; height:12rem; overflow: hidden; bottom: 0.225rem; left: 24.5rem; background-color: #E64340; }
+.pai_5{position: absolute; width: 8rem; height:12rem; overflow: hidden; bottom: 0.225rem; left: 36rem; background-color: #E64340; }
+.pai_6{transform: rotate(90deg); position: absolute; width: 8rem; height:12rem; overflow: hidden; top: -1.8rem; right: 6rem; background-color: #E64340; }
+.pai_banker{position: absolute; width: 3rem; height: 3rem; border-radius: 3rem; line-height: 3rem; border: 0.25rem solid #FF0000; color: #FF0000; font-size: 2rem; left: 0rem; }
+.pai_player{position: absolute; width: 3rem; height: 3rem; border-radius: 3rem; line-height: 3rem; border: 0.25rem solid #0000FF; color: #0000FF; font-size: 2rem; right: 0rem;}
+.pai_lh_banker{position: absolute; width: 3rem; height: 3rem; border-radius: 3rem; line-height: 3rem; border: 0.25rem solid #FF0000; color: #FF0000; font-size: 2rem; right: 0rem; }
+.pai_lh_player{position: absolute; width: 3rem; height: 3rem; border-radius: 3rem; line-height: 3rem; border: 0.25rem solid #0000FF; color: #0000FF; font-size: 2rem; left: 0rem;}
+.is_lock{position: absolute; top: 5%; left: 30%; width: 18rem; height: 18rem; line-height: 18rem; border-radius: 18rem; color: #FF0000; border: 0.5rem solid #FF0000; font-size: 7rem; display: none;}
+
+/* 新增龙虎识别 展示 */
+.pai_lh_1{position: absolute; width: 14rem; height:20rem; overflow: hidden; bottom: 0.225rem; left: 24rem; background-color: #E64340; }
+.pai_lh_2{position: absolute; width: 14rem; height:20rem; overflow: hidden; bottom: 0.225rem; left: 6rem; background-color: #E64340; }
+
+
+/* 新增 牛牛 识别 展示 */
+.main_nn_top{ height: 40rem;}
+.main_nn_top_left{ position: relative; float: left; width:87.5rem; height: 100%; background-color: #1FC94B; } /* 947px 517px 85 一个格子，算上应该 1px  */
+.main_nn_top_right{float: left; width:30.5rem; height: 100%; margin-left: 0.125rem;  background-color: #011049; border: 0.0625rem solid #2773e6; position: relative;}
+.main_nn_top_right div{position: absolute;}
+
+.right_nn_name{left: 1rem; top: 1rem; color: #fef72f; font-size: 3rem;}
+.right_nn_xue{left: 1rem; top: 6rem; color: #fef72f; font-size: 3rem;}
+.right_nn_pu{left: 1rem; top: 11rem; color: #fef72f; font-size: 3rem;}
+
+.right_nn_logo{left: 1rem; top: 27rem; color: #fef72f; font-size: 2.25rem; width: 13rem; height: 13rem; text-align: center;}
+.right_nn_logo img{width: 100%; height: 100%;}
+.right_nn_action_bg{left: 16rem; top: 27rem; width: 12.5rem; height: 12.5rem; border: 0.25rem solid #fef72f; border-radius: 50%;}
+.right_nn_action_title_en{left: 18.5rem; top: 28.5rem; color: #fef72f; font-size: 4rem;}
+.right_nn_action_title_name{left: 20.2rem; top: 33rem; color: #fef72f; font-size: 4rem;}
+.right_nn_action_title_num{left: 19rem; top: 30rem; color: #fef72f; font-size: 6rem; display: none;}
+
+.show_pai_nn_1{width: 100%; position: relative; height: 15rem; background-color: #00BCFC; padding-top: 0.5rem;}
+.show_pai_nn_xian{width: 100%; height: 25rem; display: flex;}
+.show_pai_nn_x_1{width: 33%; height: 100%; position: relative;}
+.show_pai_nn_x_2{width: 33%; height: 100%; position: relative; background-color: #00BCFC;}
+.show_pai_nn_x_3{width: 33%; height: 100%; position: relative;}
+.show_pai_nn_img img{width: 10rem; height: 14.5rem;}
+.show_pai_nn_img_nn_zhuang_1{display: flex; width: 80%;}
+.show_pai_nn_img_nn_xian_1 img{width: 8rem; height: 12rem;}
+.show_pai_nn_img_nn_xian_2 img{width: 8rem; height: 12rem;}
+.show_pai_nn_img_nn_xian_3 img{width: 8rem; height: 12rem;}
+.pai_nn_name_zhuang{position: absolute; top: 2rem; left: 2rem; font-size: 2rem; color: red;}
+.pai_nn_name_x{position: absolute; top: 16rem; left: 11rem; font-size: 2rem; color: blue;}
+.pai_img_nn_row_1{width: 100%; height: 12.5rem; display: flex;}
+.pai_img_nn_row_2{width: 100%; height: 12.5rem; display: flex;}
+
+.is_lock_nn{display: none; position: absolute; width: 18rem; height: 18rem; line-height: 18rem; border-radius: 18rem; border: 0.5rem solid #FF0000; font-size: 7rem; }
+.is_lock_zhuang{top: 2%; left: 40%;  color: #FF0000; height: 13rem; line-height: 13rem; border-radius: 2rem; }
+.is_lock_x1{top: 12%; left: 15%; color: #1C2BEA; border: 0.5rem solid #1C2BEA; }
+.is_lock_x2{top: 12%; left: 15%; color: #1C2BEA; border: 0.5rem solid #1C2BEA; }
+.is_lock_x3{top: 12%; left: 15%; color: #1C2BEA; border: 0.5rem solid #1C2BEA; }
+
+
+/* 露珠 */
+.main_zhuang{background-color: #3A3A3A;}
+.main_row{flex: 1; display: flex; height: 25%;}
+.main_xian1{background-color: #2D4399;}
+.main_xian2{background-color: #0692F3;}
+.main_xian3{background-color: #01AC99;}
+.main_name{width: 13.6vw; display: flex; justify-content: center; align-items: center; color: white;}
+.main_result{flex: 1; display: flex;}
+.main_cell{width: calc(100% / 8); background-color: white; border-top: 1px solid #98979A; border-right: 1px solid #98979A; display: flex; justify-content: center; align-items: center;}
+.main_text{width: 7vw; height: 7vw;background-color: #3A3A3A; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold;}
+
+/* 上传神奇提示 */
+.show_up_data{position: fixed; top: 10rem; left: 40rem;width: 38rem; height: 38rem; line-height: 38rem; border-radius: 38rem; border: 0.5rem solid #FF0000; background-color:#FF0000 ; font-size:30rem; text-align: center;}

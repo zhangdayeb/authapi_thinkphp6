@@ -1,6 +1,5 @@
 $(function(){
 	// base url
-	var baseUrl = 'http://admin.kdy128.com'
 	// 获取 数据
 	var tableId = $.getUrlParam('tableId');
 	console.log('tableId:'+tableId)

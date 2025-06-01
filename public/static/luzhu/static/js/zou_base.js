@@ -3,7 +3,7 @@
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 var res_zhuzi_obj = {};// 珠子的 json 对象
 var res_dalu_obj_img = {};// 大路的 json 对象
-var res_dalu_obj_num = {};// 大路的 json 对象
+var res_dalu_obj_num = {};// 大路的 数字 json 对象
 var res_xiaolu_obj = {};// 小路的 json 对象
 var res_dayan_obj = {};// 大眼的 json 对象
 var res_sanxing_obj_img = {};// 三星的 json 对象
@@ -30,7 +30,7 @@ var tmp_show_dayan = create_erwei_array(66,66);
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // 设置 显示位置 最终展示数据
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-var show_zhuzi = create_erwei_array(30,6);
+var show_zhuzi = create_erwei_array(11,6);
 var show_dalu_img = create_erwei_array(66,6);
 var show_dalu_num = create_erwei_array(66,6);
 var show_sanxing_img = create_erwei_array(66,3);
@@ -158,6 +158,62 @@ function get_imp_name_by_result_type(obj_result) {
     }
     if(obj_result['result'] == 4 && obj_result["ext"] == 3){// 幸运6 庄对 闲对
         img_name = 16;
+    }
+
+    // 龙7
+    if(obj_result['result'] == 7 && obj_result["ext"] == 0){// 幸运6
+        img_name = 17;
+    }
+    if(obj_result['result'] == 7 && obj_result["ext"] == 1){// 幸运6 庄对
+        img_name = 18;
+    }
+    if(obj_result['result'] == 7 && obj_result["ext"] == 2){// 幸运6 闲对
+        img_name = 19;
+    }
+    if(obj_result['result'] == 7 && obj_result["ext"] == 3){// 幸运6 庄对 闲对
+        img_name = 20;
+    }
+
+    // 熊8
+    if(obj_result['result'] == 8 && obj_result["ext"] == 0){// 幸运6
+        img_name = 21;
+    }
+    if(obj_result['result'] == 8 && obj_result["ext"] == 1){// 幸运6 庄对
+        img_name = 22;
+    }
+    if(obj_result['result'] == 8 && obj_result["ext"] == 2){// 幸运6 闲对
+        img_name = 23;
+    }
+    if(obj_result['result'] == 8 && obj_result["ext"] == 3){// 幸运6 庄对 闲对
+        img_name = 24;
+    }
+
+    // 小老虎
+    if(obj_result['result'] == 6 && obj_result["ext"] == 0){// 幸运6
+        img_name = 25;
+    }
+    if(obj_result['result'] == 6 && obj_result["ext"] == 1){// 幸运6 庄对
+        img_name = 26;
+    }
+    if(obj_result['result'] == 6 && obj_result["ext"] == 2){// 幸运6 闲对
+        img_name = 27;
+    }
+    if(obj_result['result'] == 6 && obj_result["ext"] == 3){// 幸运6 庄对 闲对
+        img_name = 28;
+    }
+
+    // 大老虎
+    if(obj_result['result'] == 9 && obj_result["ext"] == 0){// 幸运6
+        img_name = 29;
+    }
+    if(obj_result['result'] == 9 && obj_result["ext"] == 1){// 幸运6 庄对
+        img_name = 30;
+    }
+    if(obj_result['result'] == 9 && obj_result["ext"] == 2){// 幸运6 闲对
+        img_name = 31;
+    }
+    if(obj_result['result'] == 9 && obj_result["ext"] == 3){// 幸运6 庄对 闲对
+        img_name = 32;
     }
     return img_name;
 }
@@ -333,7 +389,7 @@ function use_lie(x,y,lie_step) {// 判读 前两列 对齐，就是查看数组�
     var lie_far = x -lie_step;
     var lie_near = x-1;
     var tmp_color = "no_find"; // 默认为红色
-    show_msg("执行对比的列为：近："+lie_near+" 远："+lie_far)
+    show_msg("【换列规则】执行对比的列为：近："+lie_near+" 远："+lie_far)
     var lie_far_length = get_length_by_array(tmp_dalu_array_for_xiaolu_xiaoqiang_dayan[lie_far]);
     var lie_near_length = get_length_by_array(tmp_dalu_array_for_xiaolu_xiaoqiang_dayan[lie_near]);
     if(lie_near_length == lie_far_length){// 代码对齐了
@@ -346,7 +402,7 @@ function use_lie(x,y,lie_step) {// 判读 前两列 对齐，就是查看数组�
 // 向下规则
 function use_down(x,y,hang_step) {// 向下的规则
     var lie_duibi = x-hang_step;
-    show_msg("执行对比的列为：近："+x+" 远："+lie_duibi)
+    show_msg("【向下规则】执行对比的列为：近："+x+" 远："+lie_duibi)
     var tmp_color = "no_find"; // 默认为 蓝色
     var y_before = y - 1;
     if(tmp_dalu_array_for_xiaolu_xiaoqiang_dayan[lie_duibi][y] != "no_color"){ // 当前列 有，则为红
@@ -378,19 +434,20 @@ function public_set_xiasanlu_obj_by_dalu_tmp_array(start_position_x_1,start_posi
         }
         // show_msg("搜索起始位置为：")
         // show_msg(start_x +"|" + start_y);
-		// 单独设计 开始 一列  bug 修正
-		for(var y = start_y; y< 66; y++){
-		    if(tmp_array[start_x][y] != "no_color"){
-		        if(y == 0){// 第一粒
-		            tmp_obj["k"+i] = use_lie(start_x,y,lie_step_x);
-		        }else{// 其他粒
-		            tmp_obj["k"+i] = use_down(start_x,y,hang_step_x);
-		        }
-		        i++;
-		    }
-		}			 
-        for(var x =start_x; x < 66 ; x++){
-            for(var y = start_y; y< 66; y++){
+        // 单独设计 开始 一列  bug 修正
+        for(var y = start_y; y< 66; y++){
+            if(tmp_array[start_x][y] != "no_color"){
+                if(y == 0){// 第一粒
+                    tmp_obj["k"+i] = use_lie(start_x,y,lie_step_x);
+                }else{// 其他粒
+                    tmp_obj["k"+i] = use_down(start_x,y,hang_step_x);
+                }
+                i++;
+            }
+        }
+        // 开始 后面的列
+        for(var x = (start_x+1); x < 66 ; x++){
+            for(var y = 0; y< 66; y++){
                 if(tmp_array[x][y] != "no_color"){
                     if(y == 0){// 第一粒
                         tmp_obj["k"+i] = use_lie(x,y,lie_step_x);
@@ -595,8 +652,8 @@ function set_all_data_type_just_for_show() {
     // 设置 珠子
     var i = 0;
     for(var p in res_zhuzi_obj){
-        var start_x = Math.floor(i / 6);
-        var start_y = i % 6;
+        var start_x = Math.floor(i/6);
+        var start_y = i%6;
         show_zhuzi[start_x][start_y] = res_zhuzi_obj[p]
         i++;
     }
@@ -1264,18 +1321,3 @@ function show_zhuang_xian_wenlu_for_luzhu() {
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // 系统库函数  庄闲 问路 库 函数  结束
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-/**
- * 展示查询露珠的时间靴号铺号说明
-**/
-function show_print_explain(gameName, tableName, xueNumber, puNumber, date) {
-	var gameTypes = {
-		'2': {name: '龙虎', path: 'longhu'},
-		'3': {name: '百家乐', path: 'bjl'}
-	}
-	game_type = gameTypes[gameName].path
-	$("#zou_game_name").html(gameTypes[gameName].name)
-	$("#zou_game_table_name").html(tableName)
-	$("#zou_game_xue").html(xueNumber)
-	$("#zou_game_date").html(date)
-}

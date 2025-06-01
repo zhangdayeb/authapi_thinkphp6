@@ -336,7 +336,21 @@ Route::group('api/notification', function () {
     Route::post('test', 'log.TongZhi/test');
     Route::post('trigger', 'log.TongZhi/triggerNotification');
 });
+// 在现有的文件上传模块中添加以下路由：
 
+// ====================================================================
+// 文件上传模块
+// ====================================================================
+Route::rule('upload/video$', '/upload.UploadData/video'); // 视频文件上传
+Route::rule('upload/image$', '/upload.UploadData/image'); // 图片文件上传
+Route::rule('upload/qrcode$', '/upload.UploadData/qrcode'); // 二维码图片上传
+Route::rule('upload/qrcode_list$', '/upload.UploadData/qrcodeList'); // 二维码列表
+
+/*
+使用示例：
+POST /api/upload/qrcode          -> UploadData::qrcode()
+POST /api/upload/qrcode_list     -> UploadData::qrcodeList()
+*/
 // ====================================================================
 // 充值管理模块
 // ====================================================================

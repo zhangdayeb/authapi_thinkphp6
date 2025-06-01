@@ -10,8 +10,8 @@ return [
         'success'=>1,
     ],
     'app_update' => [
-        'image_url' => 'https://resapi.5iltnv.com/',//上传文件域名 图片视频等
-        'app_qrcode' => 'https://api.5iltnv.com/',//二维码地址
+        'image_url' => 'https://authapi.wuming888.com/',//上传文件域名 图片视频等
+        'app_qrcode' => 'https://authapi.wuming888.com/',//二维码地址
     ],
     'app_tg' => [
         //'tg_url' => 'tg.yhvip666.net/',//推广域名格式  xxx.tg.tp.com?code=asdasds
